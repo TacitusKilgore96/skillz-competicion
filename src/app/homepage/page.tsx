@@ -1,14 +1,15 @@
+import React from "react";
+
 export default function HomepagePage() {
   return (
-    <main className="min-h-screen px-6 py-12">
-      <div className="mx-auto max-w-3xl space-y-4">
-        <p className="text-sm uppercase tracking-[0.35em] text-white/60">
-          Homepage
-        </p>
-        <h1 className="text-4xl font-semibold text-[color:var(--text-primary)]">
-          Homepage
-        </h1>
-      </div>
+    <main className="min-h-screen ">
+        <video className="w-full h-full object-cover  brightness-40" role={"presentation"} autoPlay= {true} muted={true} playsInline={true} loop= {true} src="https://skillsdenmark.dk/wp-content/uploads/Videoloop_15sec_-SkillsDenmark_med-sosu-web.mp4#t=0,15">
+        </video>
+        <img className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1/3 h-auto" src="https://skillsdenmark.dk/wp-content/uploads/Skills-Denmark-logo-hvid.svg" alt="Logo" />
+        <button className="absolute top-3/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white border border-white py-2 px-4 rounded-md hover:bg-white hover:text-black transition duration-300 hover:scale-125">
+          Log in
+        </button>
+    
     </main>
   );
 }
