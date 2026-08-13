@@ -3,7 +3,7 @@
 :root {
   
   --bg-primary: #11173B;
-  --bg-s: #171717;
+  --bg-secondary: #171717;
   --box-bg: #090C2D;
   --hover: #42792F;
   --button-bg: #D7EACB;
@@ -40,7 +40,7 @@
   --color-primary: var(--text-primary);
   --color-secondary: var(--text-secondary);
   --color-background: var(--bg-primary);
-  --color-background-secondary: var(--bg-s);
+  --color-background-secondary: var(--bg-secondary);
   --color-border: var(--border);
   --color-success: var(--success);
   --color-success-background: var(--success-bg);
