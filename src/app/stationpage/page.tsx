@@ -2,6 +2,12 @@
 
 import { useState } from "react";
 
+type Class = {
+  id: number;
+  name: string;
+  teams: Team[];
+};
+
 type Team = {
   id: number;
   name: string;
@@ -15,15 +21,76 @@ const teams: Team[] = [
   { id: 4, name: "Hold 4", time: "01:48" },
 ];
 
+const normalizeTime = (value: string) => {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return "";
+  }
+
+  const hasColon = trimmed.includes(":");
+  const numericValue = trimmed.replace(/[^\d:]/g, "");
+
+  if (!numericValue) {
+    return "";
+  }
+
+  let minutes = "0";
+  let seconds = "0";
+
+  if (hasColon) {
+    const [left, right = "0"] = trimmed.split(":");
+    minutes = left || "0";
+    seconds = right || "0";
+  } else {
+    const digits = trimmed.replace(/\D/g, "");
+
+    if (digits.length <= 2) {
+      minutes = digits || "0";
+    } else {
+      minutes = digits.slice(0, 2);
+      seconds = digits.slice(2, 4);
+    }
+  }
+
+  const minuteValue = Number(minutes);
+  const secondValue = Number(seconds);
+
+  if (minuteValue > 59 || secondValue > 59) {
+    return "";
+  }
+
+  return `${String(minuteValue).padStart(2, "0")}:${String(secondValue).padStart(2, "0")}`;
+};
+
 export default function StationPage() {
   const [teamTimes, setTeamTimes] = useState(teams);
+  const [draftTimes, setDraftTimes] = useState<Record<number, string>>({});
 
   const updateTime = (id: number, time: string) => {
+    setDraftTimes((current) => ({
+      ...current,
+      [id]: time.slice(0, 5),
+    }));
+  };
+
+  const saveTime = (id: number) => {
+    const draft = normalizeTime(draftTimes[id] ?? "");
+
+    if (!draft) {
+      return;
+    }
+
     setTeamTimes((current) =>
       current.map((team) =>
-        team.id === id ? { ...team, time } : team
+        team.id === id ? { ...team, time: draft } : team
       )
     );
+
+    setDraftTimes((current) => ({
+      ...current,
+      [id]: "",
+    }));
   };
 
   const deleteTime = (id: number) => {
@@ -32,6 +99,11 @@ export default function StationPage() {
         team.id === id ? { ...team, time: "" } : team
       )
     );
+
+    setDraftTimes((current) => ({
+      ...current,
+      [id]: "",
+    }));
   };
 
   const completed = teamTimes.filter((team) => team.time !== "");
@@ -210,18 +282,24 @@ export default function StationPage() {
 
                             <input
                               type="text"
-                              placeholder="00:00"
+                              placeholder="MM:SS"
+                              value={draftTimes[team.id] ?? ""}
                               maxLength={5}
                               onChange={(e) =>
                                 updateTime(team.id, e.target.value)
                               }
-                              className=" w-28 rounded-xl border border-border bg-background px-4 py-3 text-center font-mono text-lg text-primary outline-none transition placeholder:text-[#525977] focus:border-green
-                              "
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  saveTime(team.id);
+                                }
+                              }}
+                              className="w-28 rounded-xl border border-border bg-background px-4 py-3 text-center font-mono text-lg text-primary outline-none transition placeholder:text-[#525977] focus:border-green"
                             />
 
                             <button
-                              className="rounded-xl bg-green-lightpx-4 py-3 font-semibold text-green-dark transition hover:bg-hover-bg
-                              "
+                              type="button"
+                              onClick={() => saveTime(team.id)}
+                              className="rounded-xl bg-green-light px-4 py-3 font-semibold text-green-dark transition hover:bg-hover-bg"
                             >
                               Gem
                             </button>
@@ -249,7 +327,7 @@ export default function StationPage() {
 
                     <div>
                       <div className="text-xs font-semibold uppercase tracking-wider text-secondary">
-                        Bedste resultat
+                        klassen Bedste hold resultat
                       </div>
 
                       <div className="mt-1 text-lg font-bold">
@@ -273,14 +351,9 @@ export default function StationPage() {
 
                 </div>
 
-                {/*  INFO 
                 <div className="rounded-2xl border border-border bg-box-background p-6">
 
                   <div className="mb-3 flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-blue-background  bg-accent-blue-">
-                      i
-                    </div>
-
                     <h3 className="font-bold">
                       Om posten
                     </h3>
@@ -292,7 +365,7 @@ export default function StationPage() {
                     har afsluttet posten.
                   </p>
 
-                </div> */}
+                </div>
 
               </aside>
 
