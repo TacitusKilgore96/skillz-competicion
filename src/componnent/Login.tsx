@@ -8,7 +8,7 @@ export default function LoginPage() {
     password: ''
   });
 
-  const roles = ['Admin', 'Værksted', 'Lærer', 'Elev'];
+  const roles = ['Lærer', 'Elev'];
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -37,7 +37,7 @@ export default function LoginPage() {
             <span className="block text-sm font-medium text-primary mb-2">
               Vælg rolle
             </span>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3">
               {roles.map((role) => (
                 <label
                   key={role}
