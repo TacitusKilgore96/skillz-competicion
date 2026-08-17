@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function AdminLayout({ children }: LayoutProps<"/admin">) {
 	return (
-		<div className="min-h-screen">
+		<div className="min-h-screen text-slate-600">
 			<AdminShell>{children}</AdminShell>
 		</div>
 	);
