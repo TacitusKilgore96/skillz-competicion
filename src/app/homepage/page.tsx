@@ -10,7 +10,6 @@ export default function HomepagePage() {
         <Link href="/login" className="absolute top-3/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white border border-white py-2 px-4 rounded-md hover:bg-white hover:text-black transition duration-300 hover:scale-125">
           Log in
         </Link>
-    
     </main>
   );
 }

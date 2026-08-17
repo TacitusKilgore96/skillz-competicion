@@ -5,7 +5,7 @@ export default function ResultsPage() {
         <p className="text-sm uppercase tracking-[0.35em] text-white/60">
           Results
         </p>
-        <h1 className="text-4xl font-semibold text-(--text-primary)">
+        <h1 className="text-4xl font-semibold text-primary sm:text-5xl lg:text-6xl">
           Results
         </h1>
       </div>
