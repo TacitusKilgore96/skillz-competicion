@@ -1,5 +1,5 @@
 import React from "react";
-import HomepagePage from "./homepage/page";
+import HomepagePage from "./home/page";
 import LoginPage from "./login/page";
 import StationPage from "./station/page";
 
