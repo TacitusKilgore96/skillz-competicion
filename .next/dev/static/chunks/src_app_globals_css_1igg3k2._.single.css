@@ -472,6 +472,10 @@
     height: calc(var(--spacing) * 18.5);
   }
 
+  .h-120 {
+    height: calc(var(--spacing) * 120);
+  }
+
   .h-auto {
     height: auto;
   }
@@ -654,6 +658,10 @@
 
   .overflow-hidden {
     overflow: hidden;
+  }
+
+  .overflow-scroll {
+    overflow: scroll;
   }
 
   .rounded-2xl {

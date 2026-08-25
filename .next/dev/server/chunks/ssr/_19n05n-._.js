@@ -46,6 +46,36 @@ const teams = [
         name: "Førstehjælp",
         visited: false,
         duration: "--:--"
+    },
+    {
+        id: 6,
+        name: "IT",
+        visited: true,
+        duration: "01:41"
+    },
+    {
+        id: 7,
+        name: "Design",
+        visited: true,
+        duration: "01:38"
+    },
+    {
+        id: 8,
+        name: "Service",
+        visited: true,
+        duration: "01:28"
+    },
+    {
+        id: 9,
+        name: "Natur & Miljø",
+        visited: true,
+        duration: "01:18"
+    },
+    {
+        id: 10,
+        name: "Innovation",
+        visited: true,
+        duration: "01:58"
     }
 ];
 const teamBadgeIcons = {
@@ -53,7 +83,12 @@ const teamBadgeIcons = {
     2: "/images/camera-regular-full.svg",
     3: "/images/hammer-solid-full.svg",
     4: "/images/gear-solid-full.svg",
-    5: "/images/briefcase-medical-solid-full.svg"
+    5: "/images/briefcase-medical-solid-full.svg",
+    6: "/images/laptop-solid-full.svg",
+    7: "/images/pencil-solid-full.svg",
+    8: "/images/people-group-solid-full.svg",
+    9: "/images/leaf-solid-full.svg",
+    10: "/images/lightbulb-solid-full.svg"
 };
 function StationPage() {
     const [teamStatuses, setTeamStatuses] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["useState"])(teams);
@@ -74,6 +109,7 @@ function StationPage() {
         const seconds = totalSeconds % 60;
         return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
     };
+    const bestDuration = validDurations.length > 0 ? Math.min(...validDurations) : 0;
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "min-h-screen bg-background text-primary",
         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -88,10 +124,10 @@ function StationPage() {
                             children: [
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                     className: "flex h-10 w-10 items-center justify-center rounded-full bg-green-light font-bold text-green-dark",
-                                    children: "F"
+                                    children: "f"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/teampage/page.tsx",
-                                    lineNumber: 81,
+                                    lineNumber: 96,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -102,7 +138,7 @@ function StationPage() {
                                             children: "Hold"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/teampage/page.tsx",
-                                            lineNumber: 85,
+                                            lineNumber: 100,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -110,24 +146,24 @@ function StationPage() {
                                             children: "Flemming"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/teampage/page.tsx",
-                                            lineNumber: 88,
+                                            lineNumber: 103,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/teampage/page.tsx",
-                                    lineNumber: 84,
+                                    lineNumber: 99,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/teampage/page.tsx",
-                            lineNumber: 80,
+                            lineNumber: 95,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/teampage/page.tsx",
-                        lineNumber: 78,
+                        lineNumber: 93,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -143,7 +179,7 @@ function StationPage() {
                                             children: "📈"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/teampage/page.tsx",
-                                            lineNumber: 105,
+                                            lineNumber: 120,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -153,7 +189,7 @@ function StationPage() {
                                                     children: "Hold"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/teampage/page.tsx",
-                                                    lineNumber: 110,
+                                                    lineNumber: 125,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -161,28 +197,28 @@ function StationPage() {
                                                     children: "Overblik over resultater"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/teampage/page.tsx",
-                                                    lineNumber: 114,
+                                                    lineNumber: 129,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/teampage/page.tsx",
-                                            lineNumber: 109,
+                                            lineNumber: 124,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/teampage/page.tsx",
-                                    lineNumber: 103,
+                                    lineNumber: 118,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/teampage/page.tsx",
-                                lineNumber: 101,
+                                lineNumber: 116,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-2",
+                                className: "mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3",
                                 children: [
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
                                         title: "Jeres Samlede Tid",
@@ -190,7 +226,7 @@ function StationPage() {
                                         description: "mm:ss"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/teampage/page.tsx",
-                                        lineNumber: 126,
+                                        lineNumber: 141,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
@@ -199,13 +235,22 @@ function StationPage() {
                                         description: "mm:ss"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/teampage/page.tsx",
-                                        lineNumber: 132,
+                                        lineNumber: 147,
+                                        columnNumber: 15
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
+                                        title: "Bedste Tid",
+                                        value: validDurations.length > 0 ? formatDuration(bestDuration) : "--:--",
+                                        description: "mm:ss"
+                                    }, void 0, false, {
+                                        fileName: "[project]/src/app/teampage/page.tsx",
+                                        lineNumber: 153,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/teampage/page.tsx",
-                                lineNumber: 124,
+                                lineNumber: 139,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -223,7 +268,7 @@ function StationPage() {
                                                             children: "Jeres resultater"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/teampage/page.tsx",
-                                                            lineNumber: 149,
+                                                            lineNumber: 170,
                                                             columnNumber: 21
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -231,22 +276,22 @@ function StationPage() {
                                                             children: "Her kan I se jeres tider på alle poster"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/teampage/page.tsx",
-                                                            lineNumber: 153,
+                                                            lineNumber: 174,
                                                             columnNumber: 21
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/teampage/page.tsx",
-                                                    lineNumber: 148,
+                                                    lineNumber: 169,
                                                     columnNumber: 19
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/teampage/page.tsx",
-                                                lineNumber: 146,
+                                                lineNumber: 167,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                className: "divide-y divide-border",
+                                                className: "divide-y divide-border overflow-scroll h-120",
                                                 children: teamStatuses.map((team)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                                         className: "flex flex-col gap-4 px-6 py-5 transition hover:bg-primary/60 sm:flex-row sm:items-center sm:justify-between",
                                                         children: [
@@ -258,7 +303,7 @@ function StationPage() {
                                                                         children: team.id
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/src/app/teampage/page.tsx",
-                                                                        lineNumber: 173,
+                                                                        lineNumber: 194,
                                                                         columnNumber: 25
                                                                     }, this),
                                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -269,12 +314,12 @@ function StationPage() {
                                                                             className: "h-7 w-7 object-contain"
                                                                         }, void 0, false, {
                                                                             fileName: "[project]/src/app/teampage/page.tsx",
-                                                                            lineNumber: 179,
+                                                                            lineNumber: 200,
                                                                             columnNumber: 29
                                                                         }, this) : team.id
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/src/app/teampage/page.tsx",
-                                                                        lineNumber: 177,
+                                                                        lineNumber: 198,
                                                                         columnNumber: 25
                                                                     }, this),
                                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -284,7 +329,7 @@ function StationPage() {
                                                                                 children: team.name
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/src/app/teampage/page.tsx",
-                                                                                lineNumber: 190,
+                                                                                lineNumber: 211,
                                                                                 columnNumber: 27
                                                                             }, this),
                                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -292,19 +337,19 @@ function StationPage() {
                                                                                 children: team.visited ? "Besøgt stationen" : "Har ikke besøgt stationen"
                                                                             }, void 0, false, {
                                                                                 fileName: "[project]/src/app/teampage/page.tsx",
-                                                                                lineNumber: 194,
+                                                                                lineNumber: 215,
                                                                                 columnNumber: 27
                                                                             }, this)
                                                                         ]
                                                                     }, void 0, true, {
                                                                         fileName: "[project]/src/app/teampage/page.tsx",
-                                                                        lineNumber: 189,
+                                                                        lineNumber: 210,
                                                                         columnNumber: 25
                                                                     }, this)
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/src/app/teampage/page.tsx",
-                                                                lineNumber: 171,
+                                                                lineNumber: 192,
                                                                 columnNumber: 23
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -315,7 +360,7 @@ function StationPage() {
                                                                         children: team.visited ? team.duration : "--:--"
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/src/app/teampage/page.tsx",
-                                                                        lineNumber: 203,
+                                                                        lineNumber: 224,
                                                                         columnNumber: 25
                                                                     }, this),
                                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -325,30 +370,30 @@ function StationPage() {
                                                                         children: team.visited ? "Besøgt" : "Ikke besøgt"
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/src/app/teampage/page.tsx",
-                                                                        lineNumber: 207,
+                                                                        lineNumber: 228,
                                                                         columnNumber: 25
                                                                     }, this)
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/src/app/teampage/page.tsx",
-                                                                lineNumber: 202,
+                                                                lineNumber: 223,
                                                                 columnNumber: 23
                                                             }, this)
                                                         ]
                                                     }, team.id, true, {
                                                         fileName: "[project]/src/app/teampage/page.tsx",
-                                                        lineNumber: 165,
+                                                        lineNumber: 186,
                                                         columnNumber: 21
                                                     }, this))
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/teampage/page.tsx",
-                                                lineNumber: 161,
+                                                lineNumber: 182,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/teampage/page.tsx",
-                                        lineNumber: 144,
+                                        lineNumber: 165,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("aside", {
@@ -367,7 +412,7 @@ function StationPage() {
                                                                         children: "Besøgstatus"
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/src/app/teampage/page.tsx",
-                                                                        lineNumber: 237,
+                                                                        lineNumber: 258,
                                                                         columnNumber: 23
                                                                     }, this),
                                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -375,13 +420,13 @@ function StationPage() {
                                                                         children: "Poster"
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/src/app/teampage/page.tsx",
-                                                                        lineNumber: 241,
+                                                                        lineNumber: 262,
                                                                         columnNumber: 23
                                                                     }, this)
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/src/app/teampage/page.tsx",
-                                                                lineNumber: 236,
+                                                                lineNumber: 257,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -389,13 +434,13 @@ function StationPage() {
                                                                 children: "✅"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/teampage/page.tsx",
-                                                                lineNumber: 246,
+                                                                lineNumber: 267,
                                                                 columnNumber: 21
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/teampage/page.tsx",
-                                                        lineNumber: 234,
+                                                        lineNumber: 255,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -403,7 +448,7 @@ function StationPage() {
                                                         children: visitedCount
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/teampage/page.tsx",
-                                                        lineNumber: 252,
+                                                        lineNumber: 273,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -416,13 +461,13 @@ function StationPage() {
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/teampage/page.tsx",
-                                                        lineNumber: 256,
+                                                        lineNumber: 277,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/teampage/page.tsx",
-                                                lineNumber: 232,
+                                                lineNumber: 253,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -435,12 +480,12 @@ function StationPage() {
                                                             children: "Om posten"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/teampage/page.tsx",
-                                                            lineNumber: 265,
+                                                            lineNumber: 286,
                                                             columnNumber: 21
                                                         }, this)
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/teampage/page.tsx",
-                                                        lineNumber: 264,
+                                                        lineNumber: 285,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -448,47 +493,47 @@ function StationPage() {
                                                         children: "Her markerer holdet, om de har besøgt posten eller ej. Statusen bruges til at holde styr på, hvilke grupper der er nået frem til stationen."
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/teampage/page.tsx",
-                                                        lineNumber: 270,
+                                                        lineNumber: 291,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/teampage/page.tsx",
-                                                lineNumber: 262,
+                                                lineNumber: 283,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/teampage/page.tsx",
-                                        lineNumber: 229,
+                                        lineNumber: 250,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/teampage/page.tsx",
-                                lineNumber: 141,
+                                lineNumber: 162,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/teampage/page.tsx",
-                        lineNumber: 98,
+                        lineNumber: 113,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/teampage/page.tsx",
-                lineNumber: 75,
+                lineNumber: 90,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/src/app/teampage/page.tsx",
-            lineNumber: 70,
+            lineNumber: 85,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/src/app/teampage/page.tsx",
-        lineNumber: 69,
+        lineNumber: 84,
         columnNumber: 5
     }, this);
 }
@@ -508,14 +553,14 @@ function StationPage() {
                 children: icon
             }, void 0, false, {
                 fileName: "[project]/src/app/teampage/page.tsx",
-                lineNumber: 316,
+                lineNumber: 337,
                 columnNumber: 7
             }, this),
             label
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/teampage/page.tsx",
-        lineNumber: 304,
+        lineNumber: 325,
         columnNumber: 5
     }, this);
 }
@@ -534,7 +579,7 @@ function StatCard({ title, value, description, highlight = false }) {
                 children: title
             }, void 0, false, {
                 fileName: "[project]/src/app/teampage/page.tsx",
-                lineNumber: 347,
+                lineNumber: 368,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -545,7 +590,7 @@ function StatCard({ title, value, description, highlight = false }) {
                 children: value
             }, void 0, false, {
                 fileName: "[project]/src/app/teampage/page.tsx",
-                lineNumber: 351,
+                lineNumber: 372,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$ssr$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -553,13 +598,13 @@ function StatCard({ title, value, description, highlight = false }) {
                 children: description
             }, void 0, false, {
                 fileName: "[project]/src/app/teampage/page.tsx",
-                lineNumber: 360,
+                lineNumber: 381,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/teampage/page.tsx",
-        lineNumber: 338,
+        lineNumber: 359,
         columnNumber: 5
     }, this);
 }
