@@ -2,7 +2,7 @@ import {AdminShell} from "@/app/admin/shell";
 
 export default function Page() {
     return (
-        <AdminShell pageTitle={"Dashboard"} currentPath={"/admin"}>
+        <AdminShell pageTitle={"Oversigt"} currentPath={"/admin"}>
             <div>
                 <h1>Admin Page</h1>
             </div>
