@@ -26,7 +26,7 @@ export default function AdminLayout({children}: { children: ReactNode }) {
                     </header>
 
                     {/* Content */}
-                    <div className="mx-auto w-full max-w-7xl flex-1 p-6 md:p-8">{children}</div>
+                    {children}
                 </main>
             </div>
         </div>
