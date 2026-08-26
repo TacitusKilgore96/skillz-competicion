@@ -11,10 +11,9 @@ interface ShellProps {
 }
 
 export function AdminShell({pageTitle, children, currentPath}: ShellProps) {
-	const [now, setNow] = useState<Date | null>(null);
+	const [now, setNow] = useState<Date | null>(() => typeof window !== "undefined" ? new Date() : null);
 
 	useEffect(() => {
-		setNow(new Date());
 		const timer = setInterval(() => setNow(new Date()), 60000);
 		return () => clearInterval(timer);
 	}, []);

@@ -24,5 +24,124 @@
       "date": "29-08-2026",
       "status": "DRAFT"
     }
+  ],
+  "schools": [
+    {
+      "id": 1,
+      "name": "Aarhus Tech"
+    },
+    {
+      "id": 2,
+      "name": "Herningsholm Erhvervsskole"
+    },
+    {
+      "id": 3,
+      "name": "NEXT Uddannelse København"
+    }
+  ],
+  "classes": [
+    {
+      "id": 1,
+      "name": "10.A",
+      "schoolId": 1,
+      "eventIds": [0, 1]
+    },
+    {
+      "id": 2,
+      "name": "10.B",
+      "schoolId": 1,
+      "eventIds": [0]
+    },
+    {
+      "id": 3,
+      "name": "9.X",
+      "schoolId": 2,
+      "eventIds": [1, 2]
+    },
+    {
+      "id": 4,
+      "name": "Grundforløb 1",
+      "schoolId": 3,
+      "eventIds": [2]
+    }
+  ],
+  "teams": [
+    {
+      "id": 1,
+      "name": "De Hurtige Smede",
+      "classId": 1
+    },
+    {
+      "id": 2,
+      "name": "Murer Mestrene",
+      "classId": 1
+    },
+    {
+      "id": 3,
+      "name": "Elektrikerne",
+      "classId": 2
+    },
+    {
+      "id": 4,
+      "name": "Team Turbo",
+      "classId": 3
+    }
+  ],
+  "stations": [
+    {
+      "id": 1,
+      "name": "Præcision og Måling",
+      "eventId": 0,
+      "entries": [
+        {
+          "teamId": 1,
+          "time": "01:35"
+        },
+        {
+          "teamId": 2,
+          "time": "02:10"
+        },
+        {
+          "teamId": 3,
+          "time": ""
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Svejsning & Samling",
+      "eventId": 0,
+      "entries": [
+        {
+          "teamId": 1,
+          "time": "03:15"
+        },
+        {
+          "teamId": 2,
+          "time": ""
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "El-kredsløb & Fejlfinding",
+      "eventId": 1,
+      "entries": [
+        {
+          "teamId": 1,
+          "time": "01:48"
+        },
+        {
+          "teamId": 4,
+          "time": "02:05"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Tømrer & Trækonstruktion",
+      "eventId": 2,
+      "entries": []
+    }
   ]
 }
