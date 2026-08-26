@@ -9,6 +9,7 @@ import useAsync from "@/hooks/useAsync";
 import {getEvents} from "@/libs/API";
 import AsyncDataRenderer from "@/components/DataComponent";
 import { IconEdit } from '@tabler/icons-react';
+import Link from "next/link";
 
 export default function Page() {
 	const {data, loading, error} = useAsync<EventModel[]>(async () => getEvents(), []);
@@ -27,7 +28,7 @@ export default function Page() {
 					"w-full h-full overflow-y-scroll flex flex-col p-2"
 				)}>
 					<div
-						className={"grid grid-cols-[1.25fr_1fr_1fr_.25fr] p-2 border-b border-gray-300 font-medium items-center"}>
+						className={"grid grid-cols-[1.25fr_1fr_1fr_.25fr] p-2 border-b border-gray-300 font-bold items-center"}>
 						<p>Navn</p>
 						<p>Dato</p>
 						<p>Status</p>
@@ -40,7 +41,7 @@ export default function Page() {
 						data={data}
 
 						renderData={events => events!.map(event => (
-							<a key={event.id} href={`/admin/events/${event.id}`}
+							<Link key={event.id} href={`/admin/events/${event.id}`}
 							     className={"grid grid-cols-[1.25fr_1fr_1fr_.25fr] items-center p-2 border-b border-gray-300"}>
 								<p className={"font-medium"}>{event.name}</p>
 								<p className={"text-gray-600"}>{event.date}</p>
@@ -50,7 +51,7 @@ export default function Page() {
 										<IconEdit/>
 									</button>
 								</div>
-							</a>
+							</Link>
 						))}
 					/>
 				</div>
