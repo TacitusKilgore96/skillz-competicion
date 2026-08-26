@@ -1,0 +1,28 @@
+{
+  "events": [
+    {
+      "id": 0,
+      "name": "First day",
+      "date": "26-08-2026",
+      "status": "READY"
+    },
+    {
+      "id": 1,
+      "name": "Second day",
+      "date": "27-08-2026",
+      "status": "READY"
+    },
+    {
+      "id": 2,
+      "name": "Third day",
+      "date": "28-08-2026",
+      "status": "READY"
+    },
+    {
+      "id": 3,
+      "name": "Last day",
+      "date": "29-08-2026",
+      "status": "DRAFT"
+    }
+  ]
+}
