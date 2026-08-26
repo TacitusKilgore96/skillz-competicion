@@ -1,4 +1,4 @@
-interface Event {
+interface EventModel {
 	id: number;
 	name: string;
 	date: string;

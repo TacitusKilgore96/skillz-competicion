@@ -79,7 +79,7 @@ function PathLink({label, targetPath, currentPath}: PathLinkProps) {
 
 	return (
 		<Link href={targetPath} className={cn(
-			"text-white hover:text-slate-800 hover:bg-hover p-2 rounded-lg transition-colors uppercase block my-1",
+			"text-white hover:text-slate-800 hover:bg-hover p-2  rounded-lg transition-colors uppercase block my-1",
 			isActive ? "font-bold" : ""
 		)}>
 			{label}

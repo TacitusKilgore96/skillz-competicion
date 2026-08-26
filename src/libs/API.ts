@@ -1,9 +1,10 @@
 import db from "@/db.local.json";
 
-export function getEvents() {
-	return db.events as Event[];
+export async function getEvents() {
+	await new Promise((resolve) => setTimeout(resolve, 1000));
+	return db.events as EventModel[];
 }
 
-export function getEventById(id: number) {
-	return db.events.find((event) => event.id === id) as Event | undefined;
+export async function getEventById(id: number) {
+	return db.events.find((event) => event.id === id) as EventModel | undefined;
 }
