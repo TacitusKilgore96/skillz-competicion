@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter, useParams, usePathname } from "next/navigation";
 import { cn } from "tailwind-variants";
-import { useParams, usePathname } from "next/navigation";
 import EventSelector from "@/components/admin/EventSelector";
 import {
 	IconLayoutDashboard,
@@ -14,7 +14,11 @@ import {
 	IconChevronLeft,
 	IconClock,
 	IconTrophy,
+	IconLogout,
+	IconUser,
+	IconLoader2,
 } from "@tabler/icons-react";
+import { getCurrentUser, logoutUser, AuthUser } from "@/libs/auth";
 
 interface ShellProps {
 	pageTitle: string;
@@ -22,12 +26,32 @@ interface ShellProps {
 }
 
 export function EventShell({ pageTitle, children }: ShellProps) {
+	const router = useRouter();
 	const [now, setNow] = useState<Date>(() => new Date());
+	const [user, setUser] = useState<AuthUser | null>(null);
+	const [authChecking, setAuthChecking] = useState(true);
 
 	useEffect(() => {
 		const timer = setInterval(() => setNow(new Date()), 30000);
 		return () => clearInterval(timer);
 	}, []);
+
+	useEffect(() => {
+		getCurrentUser().then((u) => {
+			if (!u || u.type !== "ORGANIZER") {
+				const currentPath = window.location.pathname + window.location.search;
+				window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+			} else {
+				setUser(u);
+				setAuthChecking(false);
+			}
+		});
+	}, []);
+
+	const handleLogout = async () => {
+		await logoutUser();
+		window.location.href = "/login";
+	};
 
 	const dateStr = now.toLocaleDateString("da-DK", {
 		weekday: "short",
@@ -39,6 +63,15 @@ export function EventShell({ pageTitle, children }: ShellProps) {
 		hour: "2-digit",
 		minute: "2-digit",
 	});
+
+	if (authChecking) {
+		return (
+			<div className="h-screen w-screen bg-slate-900 flex flex-col items-center justify-center text-white gap-3">
+				<IconLoader2 size={32} className="animate-spin text-slate-400" />
+				<p className="text-xs text-slate-400 font-medium">Verificerer adgang...</p>
+			</div>
+		);
+	}
 
 	return (
 		<div className="flex h-screen w-full bg-slate-50 text-slate-800 font-sans overflow-hidden">
@@ -96,8 +129,29 @@ export function EventShell({ pageTitle, children }: ShellProps) {
 					</nav>
 				</div>
 
-				{/* Bottom Sidebar: Return to all events */}
-				<div className="p-3 border-t border-slate-800">
+				{/* Bottom Sidebar: User info, Logout & Return */}
+				<div className="p-3 border-t border-slate-800 space-y-1.5">
+					{user && (
+						<div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-slate-800/60 border border-slate-700/60 text-slate-300">
+							<div className="flex items-center gap-2 min-w-0">
+								<div className="w-6 h-6 rounded bg-slate-700 text-slate-300 flex items-center justify-center shrink-0">
+									<IconUser size={13} />
+								</div>
+								<span className="text-xs font-medium truncate">
+									{user.username}
+								</span>
+							</div>
+							<button
+								type="button"
+								onClick={handleLogout}
+								title="Log ud"
+								className="text-slate-400 hover:text-red-400 transition-colors p-1 rounded hover:bg-slate-700/50"
+							>
+								<IconLogout size={14} />
+							</button>
+						</div>
+					)}
+
 					<Link
 						href="/admin"
 						className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors"
