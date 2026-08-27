@@ -3,6 +3,14 @@ import { EventModel } from "@/models/EventModel";
 import { AccountModel, CreateAccountDTO, UpdateAccountDTO } from "@/models/AccountModel";
 import { ClassModel, CreateClassDTO, UpdateClassDTO } from "@/models/ClassModel";
 import { TeamModel, CreateTeamDTO, UpdateTeamDTO } from "@/models/TeamModel";
+import {
+	StationModel,
+	CreateStationDTO,
+	UpdateStationDTO,
+	StationTimeModel,
+	CreateStationTimeDTO,
+	UpdateStationTimeDTO,
+} from "@/models/StationModel";
 
 async function simulateLoading() {
 	return new Promise<void>((resolve) => {
@@ -215,6 +223,133 @@ export async function deleteTeam(id: number): Promise<void> {
 	const json = await res.json();
 	if (!res.ok || !json.success) {
 		throw new Error(json.error || "Kunne ikke slette hold");
+	}
+}
+
+// ---------------- STATIONS ----------------
+export async function getStations(params?: {
+	eventId?: number;
+	search?: string;
+}): Promise<StationModel[]> {
+	const query = new URLSearchParams();
+	if (params?.eventId !== undefined) query.append("eventId", String(params.eventId));
+	if (params?.search) query.append("search", params.search);
+
+	const url = `/api/stations${query.toString() ? `?${query.toString()}` : ""}`;
+	const res = await fetch(url, { cache: "no-store" });
+	const json = await res.json();
+	if (!res.ok || !json.success) {
+		throw new Error(json.error || "Kunne ikke hente stationer");
+	}
+	return json.data as StationModel[];
+}
+
+export async function getStationById(id: number): Promise<StationModel> {
+	const res = await fetch(`/api/stations/${id}`, { cache: "no-store" });
+	const json = await res.json();
+	if (!res.ok || !json.success) {
+		throw new Error(json.error || "Kunne ikke hente station");
+	}
+	return json.data as StationModel;
+}
+
+export async function createStation(data: CreateStationDTO): Promise<StationModel> {
+	const res = await fetch("/api/stations", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(data),
+	});
+	const json = await res.json();
+	if (!res.ok || !json.success) {
+		throw new Error(json.error || "Kunne ikke oprette station");
+	}
+	return json.data as StationModel;
+}
+
+export async function updateStation(
+	id: number,
+	data: UpdateStationDTO
+): Promise<StationModel> {
+	const res = await fetch(`/api/stations/${id}`, {
+		method: "PUT",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(data),
+	});
+	const json = await res.json();
+	if (!res.ok || !json.success) {
+		throw new Error(json.error || "Kunne ikke opdatere station");
+	}
+	return json.data as StationModel;
+}
+
+export async function deleteStation(id: number): Promise<void> {
+	const res = await fetch(`/api/stations/${id}`, {
+		method: "DELETE",
+	});
+	const json = await res.json();
+	if (!res.ok || !json.success) {
+		throw new Error(json.error || "Kunne ikke slette station");
+	}
+}
+
+// ---------------- STATION TIMES ----------------
+export async function getStationTimes(params?: {
+	eventId?: number;
+	stationId?: number;
+	teamId?: number;
+}): Promise<StationTimeModel[]> {
+	const query = new URLSearchParams();
+	if (params?.eventId !== undefined) query.append("eventId", String(params.eventId));
+	if (params?.stationId !== undefined) query.append("stationId", String(params.stationId));
+	if (params?.teamId !== undefined) query.append("teamId", String(params.teamId));
+
+	const url = `/api/station-times${query.toString() ? `?${query.toString()}` : ""}`;
+	const res = await fetch(url, { cache: "no-store" });
+	const json = await res.json();
+	if (!res.ok || !json.success) {
+		throw new Error(json.error || "Kunne ikke hente tidsregistreringer");
+	}
+	return json.data as StationTimeModel[];
+}
+
+export async function createStationTime(
+	data: CreateStationTimeDTO
+): Promise<StationTimeModel> {
+	const res = await fetch("/api/station-times", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(data),
+	});
+	const json = await res.json();
+	if (!res.ok || !json.success) {
+		throw new Error(json.error || "Kunne ikke registrere tid");
+	}
+	return json.data as StationTimeModel;
+}
+
+export async function updateStationTime(
+	id: number,
+	data: UpdateStationTimeDTO
+): Promise<StationTimeModel> {
+	const res = await fetch(`/api/station-times/${id}`, {
+		method: "PUT",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(data),
+	});
+	const json = await res.json();
+	if (!res.ok || !json.success) {
+		throw new Error(json.error || "Kunne ikke opdatere tidsregistrering");
+	}
+	return json.data as StationTimeModel;
+}
+
+export async function deleteStationTime(id: number): Promise<void> {
+	const res = await fetch(`/api/station-times/${id}`, {
+		method: "DELETE",
+	});
+	const json = await res.json();
+	if (!res.ok || !json.success) {
+		throw new Error(json.error || "Kunne ikke slette tidsregistrering");
 	}
 }
 

@@ -80,7 +80,7 @@ function PathLink({label, href, pathRegex}: PathLinkProps) {
 	const {eventId} = useParams();
 
 	const trimmedPath = pathname.replace(/^\/admin\/[0-9]+/, "")
-	const isActive = trimmedPath.match(pathRegex);
+	const isActive = pathRegex.test(trimmedPath);
 
 	return (
 		<Link href={`/admin/${eventId}/${href}`} className={cn(

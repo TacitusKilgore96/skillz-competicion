@@ -6,6 +6,7 @@ export interface AccountModel {
 	username: string;
 	password: string;
 	teamId?: number; // Linked team ID for TEAM accounts
+	stationId?: number; // Linked station ID for POST_GUARD accounts
 }
 
 export interface CreateAccountDTO {
@@ -13,6 +14,7 @@ export interface CreateAccountDTO {
 	username: string;
 	password: string;
 	teamId?: number;
+	stationId?: number;
 }
 
 export interface UpdateAccountDTO {
@@ -20,4 +22,5 @@ export interface UpdateAccountDTO {
 	username?: string;
 	password?: string;
 	teamId?: number;
+	stationId?: number;
 }

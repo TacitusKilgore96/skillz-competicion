@@ -12,6 +12,7 @@ export interface CreateClassDTO {
 	school: string;
 	teacherName?: string;
 	initialTeamsCount?: number; // Used during creation to auto-generate teams & accounts
+	teamCount?: number;
 }
 
 export interface UpdateClassDTO {

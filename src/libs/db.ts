@@ -1,15 +1,39 @@
 import fs from "fs/promises";
 import path from "path";
 import { EventModel } from "@/models/EventModel";
-import { AccountModel, CreateAccountDTO, UpdateAccountDTO } from "@/models/AccountModel";
-import { ClassModel, CreateClassDTO, UpdateClassDTO } from "@/models/ClassModel";
-import { TeamModel, CreateTeamDTO, UpdateTeamDTO } from "@/models/TeamModel";
+import {
+	AccountModel,
+	CreateAccountDTO,
+	UpdateAccountDTO,
+} from "@/models/AccountModel";
+import {
+	ClassModel,
+	CreateClassDTO,
+	UpdateClassDTO,
+} from "@/models/ClassModel";
+import {
+	TeamModel,
+	CreateTeamDTO,
+	UpdateTeamDTO,
+} from "@/models/TeamModel";
+import {
+	StationModel,
+	CreateStationDTO,
+	UpdateStationDTO,
+	StationTimeModel,
+	CreateStationTimeDTO,
+	UpdateStationTimeDTO,
+} from "@/models/StationModel";
 
-export interface DatabaseSchema {
+const DB_PATH = path.join(process.cwd(), "src", "db.local.json");
+
+interface DatabaseSchema {
 	events: EventModel[];
 	accounts: AccountModel[];
 	classes: ClassModel[];
 	teams: TeamModel[];
+	stations: StationModel[];
+	stationTimes: StationTimeModel[];
 }
 
 const DEFAULT_DB: DatabaseSchema = {
@@ -19,82 +43,66 @@ const DEFAULT_DB: DatabaseSchema = {
 			title: "Event Title",
 			date: "2023-09-20",
 		},
-		{
-			id: 1,
-			title: "DM i Skills 2024",
-			date: "2024-04-18",
-		},
-		{
-			id: 2,
-			title: "Regionsmesterskab 2024",
-			date: "2024-05-12",
-		},
 	],
-	accounts: [
-		{
-			id: 0,
-			type: "ORGANIZER",
-			username: "organizer",
-			password: "password123",
-		},
-		{
-			id: 1,
-			type: "POST_GUARD",
-			username: "post_guard",
-			password: "password123",
-		},
-	],
+	accounts: [],
 	classes: [],
 	teams: [],
+	stations: [],
+	stationTimes: [],
 };
 
-function getDbPath(): string {
-	return path.join(process.cwd(), "src", "db.local.json");
+async function readDb(): Promise<DatabaseSchema> {
+	try {
+		const raw = await fs.readFile(DB_PATH, "utf-8");
+		const parsed = JSON.parse(raw);
+		return {
+			events: parsed.events || [],
+			accounts: parsed.accounts || [],
+			classes: parsed.classes || [],
+			teams: parsed.teams || [],
+			stations: parsed.stations || [],
+			stationTimes: parsed.stationTimes || [],
+		};
+	} catch (err: unknown) {
+		console.error("Error reading database:", err);
+		return DEFAULT_DB;
+	}
+}
+
+async function writeDb(data: DatabaseSchema): Promise<void> {
+	await fs.writeFile(DB_PATH, JSON.stringify(data, null, 2), "utf-8");
+}
+
+function generateRandomPassword(): string {
+	const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+	let result = "";
+	for (let i = 0; i < 6; i++) {
+		result += chars.charAt(Math.floor(Math.random() * chars.length));
+	}
+	return result;
 }
 
 function slugify(text: string): string {
 	return text
 		.toLowerCase()
-		.replace(/[æ]/g, "ae")
-		.replace(/[ø]/g, "oe")
-		.replace(/[å]/g, "aa")
+		.replace(/æ/g, "ae")
+		.replace(/ø/g, "oe")
+		.replace(/å/g, "aa")
 		.replace(/[^a-z0-9]/g, "_")
 		.replace(/_+/g, "_")
 		.replace(/^_|_$/g, "");
 }
 
-function generateSimplePassword(): string {
-	const chars = "abcdefghjkmnpqrstuvwxyz23456789";
-	let res = "";
-	for (let i = 0; i < 6; i++) {
-		res += chars.charAt(Math.floor(Math.random() * chars.length));
-	}
-	return res;
+// ---------------- EVENTS ----------------
+export async function getEvents(): Promise<EventModel[]> {
+	const db = await readDb();
+	return db.events;
 }
 
-export async function readDb(): Promise<DatabaseSchema> {
-	const filePath = getDbPath();
-	try {
-		const raw = await fs.readFile(filePath, "utf-8");
-		const data = JSON.parse(raw);
-		if (!data.accounts) data.accounts = [];
-		if (!data.events) data.events = [];
-		if (!data.classes) data.classes = [];
-		if (!data.teams) data.teams = [];
-		return data as DatabaseSchema;
-	} catch (err: unknown) {
-		const nodeErr = err as { code?: string };
-		if (nodeErr.code === "ENOENT") {
-			await writeDb(DEFAULT_DB);
-			return DEFAULT_DB;
-		}
-		throw err;
-	}
-}
-
-export async function writeDb(data: DatabaseSchema): Promise<void> {
-	const filePath = getDbPath();
-	await fs.writeFile(filePath, JSON.stringify(data, null, 2), "utf-8");
+export async function getEventById(id: number): Promise<EventModel | null> {
+	const db = await readDb();
+	const event = db.events.find((e) => e.id === id);
+	return event ?? null;
 }
 
 // ---------------- ACCOUNTS ----------------
@@ -105,11 +113,13 @@ export async function getAccounts(): Promise<AccountModel[]> {
 
 export async function getAccountById(id: number): Promise<AccountModel | null> {
 	const db = await readDb();
-	const account = db.accounts.find((a) => a.id === id);
-	return account ?? null;
+	const item = db.accounts.find((a) => a.id === id);
+	return item ?? null;
 }
 
-export async function createAccount(data: CreateAccountDTO): Promise<AccountModel> {
+export async function createAccount(
+	data: CreateAccountDTO
+): Promise<AccountModel> {
 	const db = await readDb();
 
 	const trimmedUsername = data.username.trim();
@@ -119,24 +129,27 @@ export async function createAccount(data: CreateAccountDTO): Promise<AccountMode
 	if (!data.password) {
 		throw new Error("Adgangskode er påkrævet");
 	}
-	if (data.type !== "ORGANIZER" && data.type !== "POST_GUARD" && data.type !== "TEAM") {
-		throw new Error("Ugyldig kontotype");
-	}
 
 	const exists = db.accounts.some(
 		(a) => a.username.toLowerCase() === trimmedUsername.toLowerCase()
 	);
 	if (exists) {
-		throw new Error(`Brugernavnet '${trimmedUsername}' er allerede i brug`);
+		throw new Error(
+			`Brugernavnet '${trimmedUsername}' er allerede i brug.`
+		);
 	}
 
-	const maxId = db.accounts.length > 0 ? Math.max(...db.accounts.map((a) => a.id)) : -1;
+	const maxId =
+		db.accounts.length > 0
+			? Math.max(...db.accounts.map((a) => a.id))
+			: -1;
 	const newAccount: AccountModel = {
 		id: maxId + 1,
-		type: data.type,
+		type: data.type || "POST_GUARD",
 		username: trimmedUsername,
 		password: data.password,
 		teamId: data.teamId,
+		stationId: data.stationId,
 	};
 
 	db.accounts.push(newAccount);
@@ -154,43 +167,46 @@ export async function updateAccount(
 		throw new Error(`Konto med id ${id} blev ikke fundet`);
 	}
 
-	const currentAccount = db.accounts[index];
+	const current = db.accounts[index];
 
 	if (data.username !== undefined) {
-		const trimmedUsername = data.username.trim();
-		if (!trimmedUsername) {
+		const trimmed = data.username.trim();
+		if (!trimmed) {
 			throw new Error("Brugernavn må ikke være tomt");
 		}
 		const duplicate = db.accounts.some(
-			(a) => a.id !== id && a.username.toLowerCase() === trimmedUsername.toLowerCase()
+			(a) =>
+				a.id !== id &&
+				a.username.toLowerCase() === trimmed.toLowerCase()
 		);
 		if (duplicate) {
-			throw new Error(`Brugernavnet '${trimmedUsername}' er allerede i brug`);
+			throw new Error(`Brugernavnet '${trimmed}' er allerede i brug.`);
 		}
-		currentAccount.username = trimmedUsername;
+		current.username = trimmed;
 	}
 
 	if (data.password !== undefined) {
 		if (!data.password) {
 			throw new Error("Adgangskode må ikke være tom");
 		}
-		currentAccount.password = data.password;
+		current.password = data.password;
 	}
 
 	if (data.type !== undefined) {
-		if (data.type !== "ORGANIZER" && data.type !== "POST_GUARD" && data.type !== "TEAM") {
-			throw new Error("Ugyldig kontotype");
-		}
-		currentAccount.type = data.type;
+		current.type = data.type;
 	}
 
 	if (data.teamId !== undefined) {
-		currentAccount.teamId = data.teamId;
+		current.teamId = data.teamId;
 	}
 
-	db.accounts[index] = currentAccount;
+	if (data.stationId !== undefined) {
+		current.stationId = data.stationId;
+	}
+
+	db.accounts[index] = current;
 	await writeDb(db);
-	return currentAccount;
+	return current;
 }
 
 export async function deleteAccount(id: number): Promise<boolean> {
@@ -205,8 +221,34 @@ export async function deleteAccount(id: number): Promise<boolean> {
 	// Remove account
 	db.accounts.splice(index, 1);
 
-	// If account is linked to a team, also delete the team (they cannot exist without each other)
-	db.teams = db.teams.filter((t) => t.accountId !== id && t.id !== account.teamId);
+	// If account is linked to a team, delete that team and its recorded times
+	if (account.teamId !== undefined) {
+		const teamId = account.teamId;
+		db.teams = db.teams.filter((t) => t.id !== teamId && t.accountId !== id);
+		db.stationTimes = db.stationTimes.filter((st) => st.teamId !== teamId);
+	}
+
+	// Also check if any team links directly to this accountId
+	const linkedTeam = db.teams.find((t) => t.accountId === id);
+	if (linkedTeam) {
+		const teamId = linkedTeam.id;
+		db.teams = db.teams.filter((t) => t.id !== teamId);
+		db.stationTimes = db.stationTimes.filter((st) => st.teamId !== teamId);
+	}
+
+	// If account is linked to a station, delete that station and its recorded times
+	if (account.stationId !== undefined) {
+		const stationId = account.stationId;
+		db.stations = db.stations.filter((s) => s.id !== stationId && s.accountId !== id);
+		db.stationTimes = db.stationTimes.filter((st) => st.stationId !== stationId);
+	}
+
+	const linkedStation = db.stations.find((s) => s.accountId === id);
+	if (linkedStation) {
+		const stationId = linkedStation.id;
+		db.stations = db.stations.filter((s) => s.id !== stationId);
+		db.stationTimes = db.stationTimes.filter((st) => st.stationId !== stationId);
+	}
 
 	await writeDb(db);
 	return true;
@@ -267,50 +309,46 @@ export async function createClass(data: CreateClassDTO): Promise<ClassModel> {
 
 	db.classes.push(newClass);
 
-	// Auto-generate teams and shared accounts if initialTeamsCount specified
-	const teamsCount = data.initialTeamsCount ? Number(data.initialTeamsCount) : 0;
-	if (teamsCount > 0) {
-		let maxTeamId = db.teams.length > 0 ? Math.max(...db.teams.map((t) => t.id)) : -1;
-		let maxAccountId = db.accounts.length > 0 ? Math.max(...db.accounts.map((a) => a.id)) : -1;
-
+	// Auto-generate teams if requested
+	const rawCount = data.initialTeamsCount ?? data.teamCount;
+	const teamCount = rawCount ? Number(rawCount) : 0;
+	if (teamCount > 0) {
 		const classSlug = slugify(trimmedName);
-		const schoolSlug = slugify(trimmedSchool);
+		for (let i = 1; i <= teamCount; i++) {
+			const maxTeamId = db.teams.length > 0 ? Math.max(...db.teams.map((t) => t.id)) : -1;
+			const nextTeamId = maxTeamId + 1;
+			const teamName = `Hold ${i}`;
 
-		for (let i = 1; i <= teamsCount; i++) {
-			maxTeamId++;
-			maxAccountId++;
-
-			// Unique username generation
+			// Generate unique username
 			let baseUsername = `${classSlug}_hold${i}`;
-			if (db.accounts.some((a) => a.username.toLowerCase() === baseUsername.toLowerCase())) {
-				baseUsername = `${schoolSlug}_${classSlug}_hold${i}`;
-			}
-			let uniqueUsername = baseUsername;
+			let usernameCandidate = baseUsername;
 			let suffix = 1;
-			while (db.accounts.some((a) => a.username.toLowerCase() === uniqueUsername.toLowerCase())) {
-				uniqueUsername = `${baseUsername}_${suffix}`;
+			while (db.accounts.some((a) => a.username.toLowerCase() === usernameCandidate.toLowerCase())) {
+				usernameCandidate = `${baseUsername}_${suffix}`;
 				suffix++;
 			}
 
-			const teamPassword = generateSimplePassword();
+			const maxAccountId = db.accounts.length > 0 ? Math.max(...db.accounts.map((a) => a.id)) : -1;
+			const newAccountId = maxAccountId + 1;
 
-			const teamAccount: AccountModel = {
-				id: maxAccountId,
+			const newAccount: AccountModel = {
+				id: newAccountId,
 				type: "TEAM",
-				username: uniqueUsername,
-				password: teamPassword,
-				teamId: maxTeamId,
+				username: usernameCandidate,
+				password: generateRandomPassword(),
+				teamId: nextTeamId,
 			};
-			db.accounts.push(teamAccount);
 
 			const newTeam: TeamModel = {
-				id: maxTeamId,
+				id: nextTeamId,
 				eventId: data.eventId,
 				classId: newClass.id,
-				accountId: maxAccountId,
-				name: `Hold ${i}`,
+				accountId: newAccountId,
+				name: teamName,
 				isConfigured: false,
 			};
+
+			db.accounts.push(newAccount);
 			db.teams.push(newTeam);
 		}
 	}
@@ -359,18 +397,24 @@ export async function deleteClass(id: number): Promise<boolean> {
 		throw new Error(`Klasse med id ${id} blev ikke fundet`);
 	}
 
-	// Find teams in this class
-	const teamsInClass = db.teams.filter((t) => t.classId === id);
-	const teamAccountIds = new Set(teamsInClass.map((t) => t.accountId));
-
 	// Remove class
 	db.classes.splice(index, 1);
 
-	// Cascade delete teams and their accounts
+	// Find teams belonging to this class
+	const classTeams = db.teams.filter((t) => t.classId === id);
+	const classTeamIds = new Set(classTeams.map((t) => t.id));
+	const classAccountIds = new Set(classTeams.map((t) => t.accountId));
+
+	// Remove teams
 	db.teams = db.teams.filter((t) => t.classId !== id);
+
+	// Remove team accounts
 	db.accounts = db.accounts.filter(
-		(a) => !teamAccountIds.has(a.id) && !(a.teamId && teamsInClass.some((t) => t.id === a.teamId))
+		(a) => !classAccountIds.has(a.id) && (a.teamId === undefined || !classTeamIds.has(a.teamId))
 	);
+
+	// Remove any recorded station times for these teams
+	db.stationTimes = db.stationTimes.filter((st) => !classTeamIds.has(st.teamId));
 
 	await writeDb(db);
 	return true;
@@ -445,19 +489,16 @@ export async function createTeam(data: CreateTeamDTO): Promise<TeamModel> {
 		finalUsername = customUsername;
 	}
 
-	const password = data.password?.trim() || generateSimplePassword();
-
 	const maxAccountId = db.accounts.length > 0 ? Math.max(...db.accounts.map((a) => a.id)) : -1;
 	const newAccountId = maxAccountId + 1;
 
-	const teamAccount: AccountModel = {
+	const newAccount: AccountModel = {
 		id: newAccountId,
 		type: "TEAM",
 		username: finalUsername,
-		password: password,
+		password: data.password || generateRandomPassword(),
 		teamId: nextTeamId,
 	};
-	db.accounts.push(teamAccount);
 
 	const newTeam: TeamModel = {
 		id: nextTeamId,
@@ -465,9 +506,10 @@ export async function createTeam(data: CreateTeamDTO): Promise<TeamModel> {
 		classId: data.classId,
 		accountId: newAccountId,
 		name: trimmedName,
-		isConfigured: false,
+		isConfigured: data.isConfigured || false,
 	};
 
+	db.accounts.push(newAccount);
 	db.teams.push(newTeam);
 	await writeDb(db);
 	return newTeam;
@@ -492,15 +534,11 @@ export async function updateTeam(
 	}
 
 	if (data.classId !== undefined) {
-		const classExists = db.classes.some((c) => c.id === data.classId);
-		if (!classExists) {
+		const parentClass = db.classes.find((c) => c.id === data.classId);
+		if (!parentClass) {
 			throw new Error(`Klassen med ID ${data.classId} findes ikke`);
 		}
 		current.classId = data.classId;
-	}
-
-	if (data.image !== undefined) {
-		current.image = data.image;
 	}
 
 	if (data.isConfigured !== undefined) {
@@ -529,22 +567,284 @@ export async function deleteTeam(id: number): Promise<boolean> {
 		(a) => a.id !== team.accountId && a.teamId !== id
 	);
 
+	// Remove any recorded station times for this team
+	db.stationTimes = db.stationTimes.filter((st) => st.teamId !== id);
+
+	await writeDb(db);
+	return true;
+}
+
+// ---------------- STATIONS ----------------
+export async function getStations(
+	eventId?: number,
+	search?: string
+): Promise<StationModel[]> {
+	const db = await readDb();
+	let result = db.stations;
+
+	if (eventId !== undefined && !isNaN(eventId)) {
+		result = result.filter((s) => s.eventId === eventId);
+	}
+
+	if (search) {
+		const query = search.toLowerCase();
+		result = result.filter(
+			(s) =>
+				s.name.toLowerCase().includes(query) ||
+				(s.description && s.description.toLowerCase().includes(query)) ||
+				(s.location && s.location.toLowerCase().includes(query))
+		);
+	}
+
+	return result;
+}
+
+export async function getStationById(id: number): Promise<StationModel | null> {
+	const db = await readDb();
+	const item = db.stations.find((s) => s.id === id);
+	return item ?? null;
+}
+
+export async function createStation(data: CreateStationDTO): Promise<StationModel> {
+	const db = await readDb();
+
+	const trimmedName = data.name.trim();
+	if (!trimmedName) {
+		throw new Error("Stationsnavn er påkrævet");
+	}
+
+	const maxStationId = db.stations.length > 0 ? Math.max(...db.stations.map((s) => s.id)) : -1;
+	const nextStationId = maxStationId + 1;
+
+	// Create linked station guard account
+	let finalUsername: string;
+	const customUsername = data.username?.trim();
+	if (!customUsername) {
+		const stationSlug = slugify(trimmedName);
+		let baseUsername = `post_${stationSlug}`;
+		let candidate = baseUsername;
+		let suffix = 1;
+		while (db.accounts.some((a) => a.username.toLowerCase() === candidate.toLowerCase())) {
+			candidate = `${baseUsername}_${suffix}`;
+			suffix++;
+		}
+		finalUsername = candidate;
+	} else {
+		if (db.accounts.some((a) => a.username.toLowerCase() === customUsername.toLowerCase())) {
+			throw new Error(`Brugernavnet '${customUsername}' er allerede i brug.`);
+		}
+		finalUsername = customUsername;
+	}
+
+	const maxAccountId = db.accounts.length > 0 ? Math.max(...db.accounts.map((a) => a.id)) : -1;
+	const newAccountId = maxAccountId + 1;
+
+	const newAccount: AccountModel = {
+		id: newAccountId,
+		type: "POST_GUARD",
+		username: finalUsername,
+		password: data.password || generateRandomPassword(),
+		stationId: nextStationId,
+	};
+
+	db.accounts.push(newAccount);
+
+	const newStation: StationModel = {
+		id: nextStationId,
+		eventId: data.eventId,
+		accountId: newAccountId,
+		name: trimmedName,
+		description: data.description?.trim() || undefined,
+		location: data.location?.trim() || undefined,
+	};
+
+	db.stations.push(newStation);
+	await writeDb(db);
+	return newStation;
+}
+
+export async function updateStation(
+	id: number,
+	data: UpdateStationDTO
+): Promise<StationModel> {
+	const db = await readDb();
+	const index = db.stations.findIndex((s) => s.id === id);
+	if (index === -1) {
+		throw new Error(`Station med id ${id} blev ikke fundet`);
+	}
+
+	const current = db.stations[index];
+
+	if (data.name !== undefined) {
+		const trimmed = data.name.trim();
+		if (!trimmed) throw new Error("Stationsnavn må ikke være tomt");
+		current.name = trimmed;
+	}
+
+	if (data.description !== undefined) {
+		current.description = data.description.trim() || undefined;
+	}
+
+	if (data.location !== undefined) {
+		current.location = data.location.trim() || undefined;
+	}
+
+	db.stations[index] = current;
+	await writeDb(db);
+	return current;
+}
+
+export async function deleteStation(id: number): Promise<boolean> {
+	const db = await readDb();
+	const index = db.stations.findIndex((s) => s.id === id);
+	if (index === -1) {
+		throw new Error(`Station med id ${id} blev ikke fundet`);
+	}
+
+	const station = db.stations[index];
+
+	// Remove station
+	db.stations.splice(index, 1);
+
+	// Remove linked station guard account (they cannot exist without each other)
+	db.accounts = db.accounts.filter(
+		(a) => a.id !== station.accountId && a.stationId !== id
+	);
+
+	// Remove any recorded times for this station
+	db.stationTimes = db.stationTimes.filter((st) => st.stationId !== id);
+
+	await writeDb(db);
+	return true;
+}
+
+// ---------------- STATION TIMES ----------------
+export async function getStationTimes(filters?: {
+	stationId?: number;
+	teamId?: number;
+	eventId?: number;
+}): Promise<StationTimeModel[]> {
+	const db = await readDb();
+	let result = db.stationTimes;
+
+	if (filters?.eventId !== undefined && !isNaN(filters.eventId)) {
+		result = result.filter((st) => st.eventId === filters.eventId);
+	}
+
+	if (filters?.stationId !== undefined && !isNaN(filters.stationId)) {
+		result = result.filter((st) => st.stationId === filters.stationId);
+	}
+
+	if (filters?.teamId !== undefined && !isNaN(filters.teamId)) {
+		result = result.filter((st) => st.teamId === filters.teamId);
+	}
+
+	return result;
+}
+
+export async function getStationTimeById(id: number): Promise<StationTimeModel | null> {
+	const db = await readDb();
+	const item = db.stationTimes.find((st) => st.id === id);
+	return item ?? null;
+}
+
+export async function createStationTime(
+	data: CreateStationTimeDTO
+): Promise<StationTimeModel> {
+	const db = await readDb();
+
+	const station = db.stations.find((s) => s.id === data.stationId);
+	if (!station) {
+		throw new Error(`Stationen med ID ${data.stationId} findes ikke`);
+	}
+
+	const team = db.teams.find((t) => t.id === data.teamId);
+	if (!team) {
+		throw new Error(`Holdet med ID ${data.teamId} findes ikke`);
+	}
+
+	if (data.timeSeconds === undefined || isNaN(data.timeSeconds) || data.timeSeconds < 0) {
+		throw new Error("Ugyldig tidsregistrering i sekunder");
+	}
+
+	const maxId = db.stationTimes.length > 0 ? Math.max(...db.stationTimes.map((st) => st.id)) : -1;
+	const newTime: StationTimeModel = {
+		id: maxId + 1,
+		eventId: data.eventId,
+		stationId: data.stationId,
+		teamId: data.teamId,
+		timeSeconds: Number(data.timeSeconds),
+		points: data.points !== undefined ? Number(data.points) : undefined,
+		completedAt: new Date().toISOString(),
+	};
+
+	db.stationTimes.push(newTime);
+	await writeDb(db);
+	return newTime;
+}
+
+export async function updateStationTime(
+	id: number,
+	data: UpdateStationTimeDTO
+): Promise<StationTimeModel> {
+	const db = await readDb();
+	const index = db.stationTimes.findIndex((st) => st.id === id);
+	if (index === -1) {
+		throw new Error(`Tidsregistrering med id ${id} blev ikke fundet`);
+	}
+
+	const current = db.stationTimes[index];
+
+	if (data.teamId !== undefined) {
+		const team = db.teams.find((t) => t.id === data.teamId);
+		if (!team) {
+			throw new Error(`Holdet med ID ${data.teamId} findes ikke`);
+		}
+		current.teamId = data.teamId;
+	}
+
+	if (data.timeSeconds !== undefined) {
+		if (isNaN(data.timeSeconds) || data.timeSeconds < 0) {
+			throw new Error("Ugyldig tidsregistrering i sekunder");
+		}
+		current.timeSeconds = Number(data.timeSeconds);
+	}
+
+	if (data.points !== undefined) {
+		current.points = isNaN(Number(data.points)) ? undefined : Number(data.points);
+	}
+
+	db.stationTimes[index] = current;
+	await writeDb(db);
+	return current;
+}
+
+export async function deleteStationTime(id: number): Promise<boolean> {
+	const db = await readDb();
+	const index = db.stationTimes.findIndex((st) => st.id === id);
+	if (index === -1) {
+		throw new Error(`Tidsregistrering med id ${id} blev ikke fundet`);
+	}
+
+	db.stationTimes.splice(index, 1);
 	await writeDb(db);
 	return true;
 }
 
 // ---------------- SCHOOLS ----------------
-export async function getUniqueSchools(eventId?: number): Promise<string[]> {
+export async function getSchools(eventId?: number): Promise<string[]> {
 	const db = await readDb();
 	let classes = db.classes;
 	if (eventId !== undefined && !isNaN(eventId)) {
 		classes = classes.filter((c) => c.eventId === eventId);
 	}
 	const schoolsSet = new Set<string>();
-	classes.forEach((c) => {
+	for (const c of classes) {
 		if (c.school && c.school.trim()) {
 			schoolsSet.add(c.school.trim());
 		}
-	});
-	return Array.from(schoolsSet).sort((a, b) => a.localeCompare(b, "da-DK"));
+	}
+	return Array.from(schoolsSet).sort();
 }
+
+export { getSchools as getUniqueSchools };

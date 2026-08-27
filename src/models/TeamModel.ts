@@ -2,7 +2,7 @@ export interface TeamModel {
 	id: number;
 	eventId: number;
 	classId: number;
-	accountId: number;
+	accountId: number; // Linked TEAM account
 	name: string;
 	image?: string;
 	isConfigured?: boolean;
@@ -14,6 +14,8 @@ export interface CreateTeamDTO {
 	name: string;
 	username?: string;
 	password?: string;
+	image?: string;
+	isConfigured?: boolean;
 }
 
 export interface UpdateTeamDTO {

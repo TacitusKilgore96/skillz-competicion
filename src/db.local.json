@@ -27,7 +27,8 @@
       "id": 1,
       "type": "POST_GUARD",
       "username": "post_guard",
-      "password": "password123"
+      "password": "password123",
+      "stationId": 0
     },
     {
       "id": 2,
@@ -112,6 +113,13 @@
       "username": "webh_hold8",
       "password": "qz2t4c",
       "teamId": 11
+    },
+    {
+      "id": 14,
+      "type": "POST_GUARD",
+      "username": "post_elektriker",
+      "password": "password123",
+      "stationId": 1
     }
   ],
   "classes": [
@@ -245,6 +253,42 @@
       "accountId": 13,
       "name": "Hold 8",
       "isConfigured": false
+    }
+  ],
+  "stations": [
+    {
+      "id": 0,
+      "eventId": 0,
+      "accountId": 1,
+      "name": "Station 1 - Tømrer & Savning",
+      "location": "Værksted 1 (Hal A)",
+      "description": "Holdet skal hurtigst muligt opmåle og tilskære tre stykker tømmer efter specifikke mål."
+    },
+    {
+      "id": 1,
+      "eventId": 0,
+      "accountId": 14,
+      "name": "Station 2 - Elektriker & Kredsløb",
+      "location": "Tekniklokale 3",
+      "description": "Korrekt montering af afbryder og lyskilde."
+    }
+  ],
+  "stationTimes": [
+    {
+      "id": 0,
+      "eventId": 0,
+      "stationId": 0,
+      "teamId": 0,
+      "timeSeconds": 142,
+      "completedAt": "2024-04-18T10:15:00.000Z"
+    },
+    {
+      "id": 1,
+      "eventId": 0,
+      "stationId": 0,
+      "teamId": 1,
+      "timeSeconds": 178,
+      "completedAt": "2024-04-18T10:30:00.000Z"
     }
   ]
 }

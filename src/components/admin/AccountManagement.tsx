@@ -8,26 +8,29 @@ import {
 	IconPlus,
 	IconTrash,
 	IconEdit,
+	IconSearch,
 	IconEye,
 	IconEyeOff,
 	IconCopy,
-	IconCheck,
+	IconX,
+	IconKey,
 	IconShield,
 	IconFlag,
-	IconSearch,
-	IconKey,
-	IconX,
-	IconSparkles,
 	IconLoader2,
 	IconAlertTriangle,
-	IconUser,
+	IconCheck,
 	IconUsers,
 	IconArrowRight,
 } from "@tabler/icons-react";
 import { button, iconButton } from "@/components/admin/Button";
 import textField from "@/components/admin/TextField";
 import card from "@/components/admin/Card";
-import { AccountModel, AccountType } from "@/models/AccountModel";
+import {
+	AccountModel,
+	AccountType,
+	CreateAccountDTO,
+	UpdateAccountDTO,
+} from "@/models/AccountModel";
 import {
 	getAccounts,
 	createAccount,
@@ -52,29 +55,29 @@ export default function AccountManagement({
 
 	const [accounts, setAccounts] = useState<AccountModel[]>([]);
 	const [loading, setLoading] = useState(true);
+
 	const [selectedId, setSelectedId] = useState<number | null>(
-		initialAccountId !== undefined && initialAccountId !== null
-			? initialAccountId
-			: null
+		initialAccountId !== undefined && initialAccountId !== null ? initialAccountId : null
 	);
 	const [viewMode, setViewMode] = useState<ViewMode>("VIEW");
+	const [typeFilter, setTypeFilter] = useState<string>("ALL");
 	const [searchQuery, setSearchQuery] = useState("");
-	const [typeFilter, setTypeFilter] = useState<"ALL" | AccountType>("ALL");
 
 	// Form states
-	const [formType, setFormType] = useState<AccountType>("POST_GUARD");
 	const [formUsername, setFormUsername] = useState("");
 	const [formPassword, setFormPassword] = useState("");
-	const [formShowPassword, setFormShowPassword] = useState(false);
+	const [formType, setFormType] = useState<AccountType>("POST_GUARD");
 	const [formError, setFormError] = useState<string | null>(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
-	// Detail view states
-	const [showPasswordDetails, setShowPasswordDetails] = useState(false);
+	// Detail view visibility and copy feedback
+	const [showPassword, setShowPassword] = useState(false);
 	const [copiedField, setCopiedField] = useState<string | null>(null);
 
 	// Delete confirmation modal
-	const [accountToDelete, setAccountToDelete] = useState<AccountModel | null>(null);
+	const [accountToDelete, setAccountToDelete] = useState<AccountModel | null>(
+		null
+	);
 	const [isDeleting, setIsDeleting] = useState(false);
 
 	// Toast notification
@@ -86,10 +89,10 @@ export default function AccountManagement({
 		setToast({ message, type });
 		setTimeout(() => {
 			setToast(null);
-		}, 4000);
+		}, 3500);
 	};
 
-	const fetchAccountsData = async (selectTargetId?: number | null) => {
+	const fetchAccounts = async (selectTargetId?: number | null) => {
 		setLoading(true);
 		try {
 			const data = await getAccounts();
@@ -113,7 +116,7 @@ export default function AccountManagement({
 	};
 
 	useEffect(() => {
-		fetchAccountsData(initialAccountId);
+		fetchAccounts(initialAccountId);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [initialAccountId]);
 
@@ -121,34 +124,25 @@ export default function AccountManagement({
 		return accounts.find((a) => a.id === selectedId) || null;
 	}, [accounts, selectedId]);
 
-	// Filtered list of accounts
+	// Filter accounts
 	const filteredAccounts = useMemo(() => {
 		return accounts.filter((account) => {
-			const matchesType = typeFilter === "ALL" || account.type === typeFilter;
+			const matchesType =
+				typeFilter === "ALL" || account.type === typeFilter;
 			const q = searchQuery.toLowerCase().trim();
 			const matchesSearch =
 				q === "" ||
 				account.username.toLowerCase().includes(q) ||
-				(account.type === "ORGANIZER" && "arrangør organizer".includes(q)) ||
-				(account.type === "POST_GUARD" && "postvagt stationsvagt guard".includes(q)) ||
-				(account.type === "TEAM" && "hold team elev".includes(q));
+				(account.type && account.type.toLowerCase().includes(q));
 			return matchesType && matchesSearch;
 		});
 	}, [accounts, typeFilter, searchQuery]);
 
-	// Counts
-	const counts = useMemo(() => {
-		const organizers = accounts.filter((a) => a.type === "ORGANIZER").length;
-		const postGuards = accounts.filter((a) => a.type === "POST_GUARD").length;
-		const teams = accounts.filter((a) => a.type === "TEAM").length;
-		return { total: accounts.length, organizers, postGuards, teams };
-	}, [accounts]);
-
 	const handleSelectAccount = (account: AccountModel) => {
 		setSelectedId(account.id);
 		setViewMode("VIEW");
+		setShowPassword(false);
 		setFormError(null);
-		setShowPasswordDetails(false);
 		startTransition(() => {
 			router.push(`/admin/${activeEventId}/accounts/${account.id}`);
 		});
@@ -156,20 +150,18 @@ export default function AccountManagement({
 
 	const handleStartCreate = () => {
 		setViewMode("CREATE");
-		setFormType("POST_GUARD");
 		setFormUsername("");
-		setFormPassword(generateRandomPassword());
-		setFormShowPassword(true);
+		setFormPassword("");
+		setFormType("POST_GUARD");
 		setFormError(null);
 	};
 
 	const handleStartEdit = (account: AccountModel) => {
 		setSelectedId(account.id);
 		setViewMode("EDIT");
-		setFormType(account.type);
 		setFormUsername(account.username);
 		setFormPassword(account.password);
-		setFormShowPassword(false);
+		setFormType(account.type);
 		setFormError(null);
 	};
 
@@ -178,54 +170,41 @@ export default function AccountManagement({
 		setFormError(null);
 	};
 
-	const generateRandomPassword = () => {
-		const chars = "abcdefghjkmnpqrstuvwxyz23456789";
-		let result = "";
-		for (let i = 0; i < 8; i++) {
-			result += chars.charAt(Math.floor(Math.random() * chars.length));
-		}
-		return result;
-	};
-
-	const handleCopy = (text: string, fieldName: string) => {
-		navigator.clipboard.writeText(text);
-		setCopiedField(fieldName);
-		setTimeout(() => setCopiedField(null), 2000);
-	};
-
 	const handleSaveForm = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setFormError(null);
 
-		const trimmed = formUsername.trim();
-		if (!trimmed) {
-			setFormError("Indtast venligst et brugernavn.");
+		const trimmedUsername = formUsername.trim();
+		if (!trimmedUsername) {
+			setFormError("Brugernavn er påkrævet");
 			return;
 		}
 		if (!formPassword) {
-			setFormError("Indtast venligst en adgangskode.");
+			setFormError("Adgangskode er påkrævet");
 			return;
 		}
 
 		setIsSubmitting(true);
 		try {
 			if (viewMode === "CREATE") {
-				const created = await createAccount({
-					type: formType,
-					username: trimmed,
+				const dto: CreateAccountDTO = {
+					username: trimmedUsername,
 					password: formPassword,
-				});
-				await fetchAccountsData(created.id);
+					type: formType,
+				};
+				const created = await createAccount(dto);
+				await fetchAccounts(created.id);
 				setViewMode("VIEW");
 				showNotification(`Kontoen '${created.username}' er oprettet!`);
 				router.push(`/admin/${activeEventId}/accounts/${created.id}`);
 			} else if (viewMode === "EDIT" && selectedAccount) {
-				const updated = await updateAccount(selectedAccount.id, {
-					type: formType,
-					username: trimmed,
+				const dto: UpdateAccountDTO = {
+					username: trimmedUsername,
 					password: formPassword,
-				});
-				await fetchAccountsData(updated.id);
+					type: formType,
+				};
+				const updated = await updateAccount(selectedAccount.id, dto);
+				await fetchAccounts(updated.id);
 				setViewMode("VIEW");
 				showNotification(`Kontoen '${updated.username}' er opdateret!`);
 			}
@@ -242,11 +221,7 @@ export default function AccountManagement({
 		setIsDeleting(true);
 		try {
 			await deleteAccount(accountToDelete.id);
-			showNotification(
-				accountToDelete.type === "TEAM"
-					? `Hold-kontoen '${accountToDelete.username}' og det tilknyttede hold er slettet.`
-					: `Kontoen '${accountToDelete.username}' er slettet.`
-			);
+			showNotification(`Kontoen '${accountToDelete.username}' er slettet.`);
 			setAccountToDelete(null);
 			const remaining = accounts.filter((a) => a.id !== accountToDelete.id);
 			setAccounts(remaining);
@@ -259,13 +234,19 @@ export default function AccountManagement({
 					router.push(`/admin/${activeEventId}/accounts`);
 				}
 			}
-			await fetchAccountsData(selectedId === accountToDelete.id ? null : selectedId);
+			await fetchAccounts(selectedId === accountToDelete.id ? null : selectedId);
 		} catch (err: unknown) {
 			const msg = err instanceof Error ? err.message : "Kunne ikke slette konto";
 			showNotification(msg, "error");
 		} finally {
 			setIsDeleting(false);
 		}
+	};
+
+	const handleCopy = (text: string, fieldName: string) => {
+		navigator.clipboard.writeText(text);
+		setCopiedField(fieldName);
+		setTimeout(() => setCopiedField(null), 2000);
 	};
 
 	return (
@@ -289,7 +270,7 @@ export default function AccountManagement({
 				</div>
 			)}
 
-			{/* Left Column: Account Directory */}
+			{/* Left Column: Accounts Directory */}
 			<aside className="shrink-0 h-full w-96 p-4 border-r border-slate-200 bg-white flex flex-col gap-3">
 				{/* Top search & create bar */}
 				<div className="flex gap-2 items-center">
@@ -300,15 +281,18 @@ export default function AccountManagement({
 						/>
 						<input
 							type="search"
-							className={cn(textField(), "w-full pl-9 pr-3 py-1.5 text-sm")}
-							placeholder="Søg efter brugernavn eller type..."
+							className={cn(
+								textField(),
+								"w-full pl-9 pr-3 py-1.5 text-sm"
+							)}
+							placeholder="Søg i konti..."
 							value={searchQuery}
 							onChange={(e) => setSearchQuery(e.target.value)}
 						/>
 					</div>
 					<button
 						onClick={handleStartCreate}
-						title="Opret ny arrangør/postvagt-konto"
+						title="Opret ny konto"
 						className={cn(
 							iconButton(),
 							"bg-hover text-white hover:bg-emerald-600 border-transparent shadow-sm"
@@ -318,51 +302,51 @@ export default function AccountManagement({
 					</button>
 				</div>
 
-				{/* Role Filter Tabs */}
-				<div className="flex gap-1 p-1 bg-slate-100 rounded-2xl text-xs font-semibold overflow-x-auto scrollbar-none">
+				{/* Filter Tabs */}
+				<div className="flex p-1 bg-slate-100 rounded-xl gap-1 text-xs font-semibold">
 					<button
 						onClick={() => setTypeFilter("ALL")}
 						className={cn(
-							"flex-1 py-1.5 px-2 rounded-xl transition-all text-center whitespace-nowrap",
+							"flex-1 py-1.5 rounded-lg transition-all text-center",
 							typeFilter === "ALL"
-								? "bg-white text-slate-900 shadow-sm"
+								? "bg-white text-slate-900 shadow-xs"
 								: "text-slate-500 hover:text-slate-800"
 						)}
 					>
-						Alle ({counts.total})
+						Alle ({accounts.length})
 					</button>
 					<button
 						onClick={() => setTypeFilter("ORGANIZER")}
 						className={cn(
-							"flex-1 py-1.5 px-2 rounded-xl transition-all text-center whitespace-nowrap",
+							"flex-1 py-1.5 rounded-lg transition-all text-center",
 							typeFilter === "ORGANIZER"
-								? "bg-white text-indigo-700 shadow-sm"
+								? "bg-white text-indigo-700 shadow-xs"
 								: "text-slate-500 hover:text-slate-800"
 						)}
 					>
-						Arrangører ({counts.organizers})
+						Arrangør
 					</button>
 					<button
 						onClick={() => setTypeFilter("POST_GUARD")}
 						className={cn(
-							"flex-1 py-1.5 px-2 rounded-xl transition-all text-center whitespace-nowrap",
+							"flex-1 py-1.5 rounded-lg transition-all text-center",
 							typeFilter === "POST_GUARD"
-								? "bg-white text-emerald-700 shadow-sm"
+								? "bg-white text-emerald-700 shadow-xs"
 								: "text-slate-500 hover:text-slate-800"
 						)}
 					>
-						Postvagter ({counts.postGuards})
+						Postvagt
 					</button>
 					<button
 						onClick={() => setTypeFilter("TEAM")}
 						className={cn(
-							"flex-1 py-1.5 px-2 rounded-xl transition-all text-center whitespace-nowrap",
+							"flex-1 py-1.5 rounded-lg transition-all text-center",
 							typeFilter === "TEAM"
-								? "bg-white text-amber-700 shadow-sm"
+								? "bg-white text-amber-700 shadow-xs"
 								: "text-slate-500 hover:text-slate-800"
 						)}
 					>
-						Hold ({counts.teams})
+						Hold
 					</button>
 				</div>
 
@@ -375,10 +359,10 @@ export default function AccountManagement({
 						</div>
 					) : filteredAccounts.length === 0 ? (
 						<div className="flex flex-col items-center justify-center h-48 text-slate-400 p-4 text-center">
-							<IconUser size={32} className="mb-2 opacity-40" />
+							<IconKey size={32} className="mb-2 opacity-40" />
 							<p className="text-sm font-medium">Ingen konti fundet</p>
 							<p className="text-xs text-slate-400 mt-1">
-								Prøv en anden søgning eller opret en ny konto.
+								Prøv at ændre dine søgekriterier eller opret en ny konto.
 							</p>
 							<button
 								onClick={handleStartCreate}
@@ -390,10 +374,8 @@ export default function AccountManagement({
 					) : (
 						<ul className="flex flex-col gap-2">
 							{filteredAccounts.map((account) => {
-								const isSelected = selectedId === account.id && viewMode !== "CREATE";
-								const isOrganizer = account.type === "ORGANIZER";
-								const isTeam = account.type === "TEAM";
-
+								const isSelected =
+									selectedId === account.id && viewMode !== "CREATE";
 								return (
 									<li key={account.id}>
 										<button
@@ -409,54 +391,71 @@ export default function AccountManagement({
 											<div className="flex items-center gap-3 min-w-0">
 												<div
 													className={cn(
-														"w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-sm font-bold",
-														isSelected
-															? isOrganizer
+														"w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold text-sm",
+														account.type === "ORGANIZER"
+															? isSelected
 																? "bg-indigo-500/30 text-indigo-200"
-																: isTeam
+																: "bg-indigo-50 text-indigo-700"
+															: account.type === "TEAM"
+															? isSelected
 																? "bg-amber-500/30 text-amber-200"
-																: "bg-emerald-500/30 text-emerald-200"
-															: isOrganizer
-															? "bg-indigo-50 text-indigo-700"
-															: isTeam
-															? "bg-amber-50 text-amber-700"
+																: "bg-amber-50 text-amber-700"
+															: isSelected
+															? "bg-emerald-500/30 text-emerald-200"
 															: "bg-emerald-50 text-emerald-700"
 													)}
 												>
-													{isOrganizer ? (
+													{account.type === "ORGANIZER" ? (
 														<IconShield size={20} />
-													) : isTeam ? (
+													) : account.type === "TEAM" ? (
 														<IconUsers size={20} />
 													) : (
 														<IconFlag size={20} />
 													)}
 												</div>
 												<div className="min-w-0">
-													<div className="font-semibold text-sm truncate">
-														{account.username}
-													</div>
-													<div className="flex items-center gap-2 mt-0.5">
+													<div className="font-bold text-sm truncate flex items-center gap-2">
+														<span>{account.username}</span>
 														<span
 															className={cn(
-																"text-[10px] uppercase font-bold tracking-wide px-2 py-0.5 rounded-full inline-block",
-																isSelected
-																	? isOrganizer
-																		? "bg-indigo-400/20 text-indigo-200"
-																		: isTeam
-																		? "bg-amber-400/20 text-amber-200"
-																		: "bg-emerald-400/20 text-emerald-200"
-																	: isOrganizer
-																	? "bg-indigo-100 text-indigo-800"
-																	: isTeam
-																	? "bg-amber-100 text-amber-800"
+																"text-[10px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded-md",
+																account.type === "ORGANIZER"
+																	? isSelected
+																		? "bg-indigo-400/20 text-indigo-300"
+																		: "bg-indigo-100 text-indigo-800"
+																	: account.type === "TEAM"
+																	? isSelected
+																		? "bg-amber-400/20 text-amber-300"
+																		: "bg-amber-100 text-amber-800"
+																	: isSelected
+																	? "bg-emerald-400/20 text-emerald-300"
 																	: "bg-emerald-100 text-emerald-800"
 															)}
 														>
-															{isOrganizer ? "Arrangør" : isTeam ? "Hold" : "Postvagt"}
+															{account.type === "ORGANIZER"
+																? "Arrangør"
+																: account.type === "TEAM"
+																? "Hold"
+																: "Postvagt"}
 														</span>
+													</div>
+													<div className="flex items-center gap-2 mt-0.5 text-xs opacity-75">
+														<span className="font-mono text-[11px]">
+															ID #{account.id}
+														</span>
+														{account.teamId && (
+															<span className="text-[10px] text-amber-600 font-semibold truncate">
+																Hold #{account.teamId}
+															</span>
+														)}
+														{account.stationId && (
+															<span className="text-[10px] text-emerald-600 font-semibold truncate">
+																Station #{account.stationId}
+															</span>
+														)}
 														<span
 															className={cn(
-																"text-xs truncate font-mono opacity-60",
+																"text-[10px] tracking-widest font-mono",
 																isSelected ? "text-slate-300" : "text-slate-400"
 															)}
 														>
@@ -521,7 +520,7 @@ export default function AccountManagement({
 										Opret ny brugerkonto
 									</h2>
 									<p className="text-sm text-slate-500 mt-1">
-										Opret en arrangør- eller postvagt-konto med adgang til systemet.
+										Opret en arrangør-, postvagt- eller hold-konto med adgang til systemet.
 									</p>
 								</div>
 								<button
@@ -609,7 +608,7 @@ export default function AccountManagement({
 												/>
 											</div>
 											<p className="text-xs text-slate-500 mt-1">
-												Fuld administrativ kontrol over begivenheder, skoler, klasser, hold og stationer.
+												Fuld administratoradgang til Kontrol Centeret, klasser, hold og alle konti.
 											</p>
 										</label>
 									</div>
@@ -621,61 +620,46 @@ export default function AccountManagement({
 										htmlFor="new-username"
 										className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2"
 									>
-										Brugernavn
+										Brugernavn *
 									</label>
-									<div className="relative">
-										<input
-											id="new-username"
-											type="text"
-											required
-											className={cn(textField(), "w-full py-2.5 px-4 text-sm")}
-											placeholder="fx post_vagt_1 eller laerer_jensen"
-											value={formUsername}
-											onChange={(e) => setFormUsername(e.target.value)}
-										/>
-									</div>
+									<input
+										id="new-username"
+										type="text"
+										required
+										className={cn(textField(), "w-full py-2.5 px-4 text-sm")}
+										placeholder="f.eks. post_trae_01"
+										value={formUsername}
+										onChange={(e) => setFormUsername(e.target.value)}
+									/>
 								</div>
 
 								{/* Password Field */}
 								<div>
-									<div className="flex items-center justify-between mb-2">
-										<label
-											htmlFor="new-password"
-											className="block text-xs font-bold uppercase tracking-wider text-slate-600"
-										>
-											Adgangskode
-										</label>
-										<button
-											type="button"
-											onClick={() => {
-												setFormPassword(generateRandomPassword());
-												setFormShowPassword(true);
-											}}
-											className="text-xs text-emerald-600 hover:text-emerald-700 font-semibold flex items-center gap-1 cursor-pointer"
-										>
-											<IconSparkles size={14} /> Generer ny kode
-										</button>
-									</div>
+									<label
+										htmlFor="new-password"
+										className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2"
+									>
+										Adgangskode *
+									</label>
 									<div className="relative flex items-center">
 										<input
 											id="new-password"
-											type={formShowPassword ? "text" : "password"}
+											type={showPassword ? "text" : "password"}
 											required
 											className={cn(
 												textField(),
-												"w-full py-2.5 pl-4 pr-10 text-sm font-mono"
+												"w-full py-2.5 pl-4 pr-12 text-sm"
 											)}
-											placeholder="Adgangskode..."
+											placeholder="Indtast adgangskode"
 											value={formPassword}
 											onChange={(e) => setFormPassword(e.target.value)}
 										/>
 										<button
 											type="button"
-											onClick={() => setFormShowPassword(!formShowPassword)}
-											className="absolute right-3 text-slate-400 hover:text-slate-600"
-											title={formShowPassword ? "Skjul kode" : "Vis kode"}
+											onClick={() => setShowPassword(!showPassword)}
+											className="absolute right-3 p-1.5 text-slate-400 hover:text-slate-600 transition-colors"
 										>
-											{formShowPassword ? (
+											{showPassword ? (
 												<IconEyeOff size={18} />
 											) : (
 												<IconEye size={18} />
@@ -807,7 +791,7 @@ export default function AccountManagement({
 												/>
 											</div>
 											<p className="text-xs text-slate-500 mt-1">
-												Fuld administrativ kontrol over kontrolcentret.
+												Fuld kontrol over Kontrol Centeret.
 											</p>
 										</label>
 									</div>
@@ -819,7 +803,7 @@ export default function AccountManagement({
 										htmlFor="edit-username"
 										className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2"
 									>
-										Brugernavn
+										Brugernavn *
 									</label>
 									<input
 										id="edit-username"
@@ -833,43 +817,30 @@ export default function AccountManagement({
 
 								{/* Password Field */}
 								<div>
-									<div className="flex items-center justify-between mb-2">
-										<label
-											htmlFor="edit-password"
-											className="block text-xs font-bold uppercase tracking-wider text-slate-600"
-										>
-											Adgangskode
-										</label>
-										<button
-											type="button"
-											onClick={() => {
-												setFormPassword(generateRandomPassword());
-												setFormShowPassword(true);
-											}}
-											className="text-xs text-emerald-600 hover:text-emerald-700 font-semibold flex items-center gap-1 cursor-pointer"
-										>
-											<IconSparkles size={14} /> Generer ny kode
-										</button>
-									</div>
+									<label
+										htmlFor="edit-password"
+										className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2"
+									>
+										Adgangskode *
+									</label>
 									<div className="relative flex items-center">
 										<input
 											id="edit-password"
-											type={formShowPassword ? "text" : "password"}
+											type={showPassword ? "text" : "password"}
 											required
 											className={cn(
 												textField(),
-												"w-full py-2.5 pl-4 pr-10 text-sm font-mono"
+												"w-full py-2.5 pl-4 pr-12 text-sm"
 											)}
 											value={formPassword}
 											onChange={(e) => setFormPassword(e.target.value)}
 										/>
 										<button
 											type="button"
-											onClick={() => setFormShowPassword(!formShowPassword)}
-											className="absolute right-3 text-slate-400 hover:text-slate-600"
-											title={formShowPassword ? "Skjul kode" : "Vis kode"}
+											onClick={() => setShowPassword(!showPassword)}
+											className="absolute right-3 p-1.5 text-slate-400 hover:text-slate-600 transition-colors"
 										>
-											{formShowPassword ? (
+											{showPassword ? (
 												<IconEyeOff size={18} />
 											) : (
 												<IconEye size={18} />
@@ -1021,21 +992,19 @@ export default function AccountManagement({
 									</div>
 									<div className="flex items-center justify-between mt-2">
 										<span className="font-mono text-slate-800 text-base">
-											{showPasswordDetails
+											{showPassword
 												? selectedAccount.password
 												: "••••••••"}
 										</span>
 										<div className="flex items-center gap-1">
 											<button
 												onClick={() =>
-													setShowPasswordDetails(!showPasswordDetails)
+													setShowPassword(!showPassword)
 												}
-												title={
-													showPasswordDetails ? "Skjul kode" : "Vis kode"
-												}
+												title={showPassword ? "Skjul adgangskode" : "Vis adgangskode"}
 												className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
 											>
-												{showPasswordDetails ? (
+												{showPassword ? (
 													<IconEyeOff size={16} />
 												) : (
 													<IconEye size={16} />
@@ -1043,13 +1012,19 @@ export default function AccountManagement({
 											</button>
 											<button
 												onClick={() =>
-													handleCopy(selectedAccount.password, "password")
+													handleCopy(
+														selectedAccount.password,
+														"password"
+													)
 												}
-												title="Kopier kode"
+												title="Kopier adgangskode"
 												className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
 											>
 												{copiedField === "password" ? (
-													<IconCheck size={16} className="text-emerald-600" />
+													<IconCheck
+														size={16}
+														className="text-emerald-600"
+													/>
 												) : (
 													<IconCopy size={16} />
 												)}
@@ -1060,11 +1035,12 @@ export default function AccountManagement({
 							</div>
 						</div>
 
-						{/* Permissions & Role Description Card */}
-						<div className={cn(card(), "bg-white p-6 shadow-sm")}>
-							<h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3">
-								Rettigheder & Adgang
+						{/* Role & Permissions Card */}
+						<div className={cn(card(), "bg-white p-6 shadow-sm space-y-4")}>
+							<h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">
+								Rolle & Tilladelser
 							</h3>
+
 							{selectedAccount.type === "ORGANIZER" ? (
 								<div className="flex items-start gap-3 p-4 rounded-2xl bg-indigo-50/60 border border-indigo-100">
 									<IconShield
@@ -1108,17 +1084,31 @@ export default function AccountManagement({
 									)}
 								</div>
 							) : (
-								<div className="flex items-start gap-3 p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100">
-									<IconFlag
-										size={22}
-										className="text-emerald-600 shrink-0 mt-0.5"
-									/>
-									<div className="text-sm text-emerald-900">
-										<p className="font-semibold">Postvagt / Stationsadgang</p>
-										<p className="mt-1 text-xs text-emerald-700 leading-relaxed">
-											Denne konto giver adgang til stationsvisningen for den tildelte post. Postvagten kan logge ind under konkurrencen for at se hold der ankommer til stationen, starte/stoppe tidtagning og indsende opnåede resultater.
-										</p>
+								<div className="space-y-3">
+									<div className="flex items-start gap-3 p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100">
+										<IconFlag
+											size={22}
+											className="text-emerald-600 shrink-0 mt-0.5"
+										/>
+										<div className="text-sm text-emerald-900">
+											<p className="font-semibold">Postvagt / Stationsadgang</p>
+											<p className="mt-1 text-xs text-emerald-700 leading-relaxed">
+												Denne konto giver adgang til stationsvisningen for den tildelte post. Postvagten kan logge ind under konkurrencen for at se hold der ankommer til stationen, starte/stoppe tidtagning og indsende opnåede resultater.
+											</p>
+										</div>
 									</div>
+									{selectedAccount.stationId && (
+										<Link
+											href={`/admin/${activeEventId}/stations/${selectedAccount.stationId}`}
+											className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors text-xs font-semibold text-slate-800"
+										>
+											<div className="flex items-center gap-2">
+												<IconFlag size={16} className="text-emerald-600" />
+												<span>Gå til tilknyttet station #{selectedAccount.stationId}</span>
+											</div>
+											<IconArrowRight size={16} className="text-slate-400" />
+										</Link>
+									)}
 								</div>
 							)}
 						</div>
@@ -1188,6 +1178,15 @@ export default function AccountManagement({
 							</div>
 						)}
 
+						{accountToDelete.type === "POST_GUARD" && accountToDelete.stationId && (
+							<div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2">
+								<IconAlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+								<span>
+									<strong>Advarsel:</strong> Dette er en postvagt-konto tilknyttet en station. Sletning af denne konto vil automatisk slette den tilknyttede station og alle dens tidsregistreringer!
+								</span>
+							</div>
+						)}
+
 						<div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
 							<button
 								type="button"
@@ -1209,7 +1208,9 @@ export default function AccountManagement({
 									"px-5 py-1.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 border-transparent shadow-sm flex items-center gap-2"
 								)}
 							>
-								{isDeleting && <IconLoader2 size={16} className="animate-spin" />}
+								{isDeleting && (
+									<IconLoader2 size={16} className="animate-spin" />
+								)}
 								<span>Slet konto</span>
 							</button>
 						</div>
