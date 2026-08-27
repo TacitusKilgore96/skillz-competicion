@@ -23,6 +23,12 @@
       "name": "Last day",
       "date": "29-08-2026",
       "status": "DRAFT"
+    },
+    {
+      "id": 4,
+      "name": "World end",
+      "date": "30-12-4000",
+      "status": "READY"
     }
   ],
   "schools": [
@@ -44,25 +50,35 @@
       "id": 1,
       "name": "10.A",
       "schoolId": 1,
-      "eventIds": [0, 1]
+      "eventIds": [
+        0,
+        1
+      ]
     },
     {
       "id": 2,
       "name": "10.B",
       "schoolId": 1,
-      "eventIds": [0]
+      "eventIds": [
+        0
+      ]
     },
     {
       "id": 3,
       "name": "9.X",
       "schoolId": 2,
-      "eventIds": [1, 2]
+      "eventIds": [
+        1,
+        2
+      ]
     },
     {
       "id": 4,
       "name": "Grundforløb 1",
       "schoolId": 3,
-      "eventIds": [2]
+      "eventIds": [
+        2
+      ]
     }
   ],
   "teams": [

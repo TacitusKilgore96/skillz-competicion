@@ -7,8 +7,6 @@ import { button } from "@/components/admin/Button";
 import useAsync from "@/hooks/useAsync";
 import {
 	createAccount,
-	generateRandomPassword,
-	generateRandomUsername,
 	getAccounts,
 	getClasses,
 	getEvents,
@@ -17,6 +15,7 @@ import {
 	getTeams,
 	resetAccountPassword,
 } from "@/libs/API";
+import { generateRandomPassword, generateRandomUsername } from "@/libs/generators";
 import AsyncDataRenderer from "@/components/DataComponent";
 import { useRouter } from "next/navigation";
 import Link from "next/link";

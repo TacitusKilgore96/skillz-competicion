@@ -1,149 +1,182 @@
-import db from "@/db.local.json";
+"use server";
+
+import fs from "node:fs/promises";
+import path from "node:path";
 import type { AccountModel, AccountRole } from "@/models/AccountModel";
+import { generateRandomPassword, generateRandomUsername } from "@/libs/generators";
 
-// In-memory store that starts from the JSON file (simulates a backend)
-let eventsStore: EventModel[] = (db.events ?? []) as EventModel[];
-let schoolsStore: SchoolModel[] = (db.schools ?? []) as SchoolModel[];
-let classesStore: ClassModel[] = (db.classes ?? []) as ClassModel[];
-let teamsStore: TeamModel[] = (db.teams ?? []) as TeamModel[];
-let stationsStore: StationModel[] = (db.stations ?? []) as StationModel[];
-let accountsStore: AccountModel[] = (db.accounts ?? []) as AccountModel[];
+const DB_PATH = path.join(process.cwd(), "src", "db.local.json");
 
-// Helper to generate random readable password/codes
-export function generateRandomPassword(length = 8, numbersOnly = false): string {
-	if (numbersOnly) {
-		return Math.floor(1000 + Math.random() * 9000).toString();
-	}
-	const chars = "abcdefghjkmnpqrstuvwxyz23456789";
-	let res = "";
-	for (let i = 0; i < length; i++) {
-		res += chars.charAt(Math.floor(Math.random() * chars.length));
-	}
-	return res;
+interface DbSchema {
+	events: EventModel[];
+	schools: SchoolModel[];
+	classes: ClassModel[];
+	teams: TeamModel[];
+	stations: StationModel[];
+	accounts: AccountModel[];
 }
 
-export function generateRandomUsername(prefix: string, name?: string): string {
-	const cleanName = name ? name.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8) : "";
-	const rand = Math.floor(100 + Math.random() * 900);
-	return cleanName ? `${prefix}_${cleanName}_${rand}` : `${prefix}_${rand}`;
+async function readDb(): Promise<DbSchema> {
+	try {
+		const raw = await fs.readFile(DB_PATH, "utf-8");
+		const data = JSON.parse(raw);
+		return {
+			events: data.events ?? [],
+			schools: data.schools ?? [],
+			classes: data.classes ?? [],
+			teams: data.teams ?? [],
+			stations: data.stations ?? [],
+			accounts: data.accounts ?? [],
+		};
+	} catch (error) {
+		console.error("Error reading db.local.json:", error);
+		return {
+			events: [],
+			schools: [],
+			classes: [],
+			teams: [],
+			stations: [],
+			accounts: [],
+		};
+	}
+}
+
+async function writeDb(db: DbSchema): Promise<void> {
+	const json = JSON.stringify(db, null, 2) + "\n";
+	await fs.writeFile(DB_PATH, json, "utf-8");
 }
 
 // ── Events API ───────────────────────────────────────────────────────────────
 
-export async function getEvents() {
-	await new Promise((resolve) => setTimeout(resolve, 300));
-	return [...eventsStore];
+export async function getEvents(): Promise<EventModel[]> {
+	const db = await readDb();
+	return db.events;
 }
 
 export async function getEventById(id: number): Promise<EventModel | undefined> {
-	await new Promise((resolve) => setTimeout(resolve, 150));
-	return eventsStore.find((event) => event.id === id);
+	const db = await readDb();
+	return db.events.find((event) => event.id === id);
 }
 
 export async function createEvent(data: Omit<EventModel, "id">): Promise<EventModel> {
-	await new Promise((resolve) => setTimeout(resolve, 300));
-	const newId = eventsStore.length > 0 ? Math.max(...eventsStore.map(e => e.id)) + 1 : 0;
+	const db = await readDb();
+	const newId = db.events.length > 0 ? Math.max(...db.events.map(e => e.id)) + 1 : 0;
 	const newEvent: EventModel = { id: newId, ...data };
-	eventsStore = [...eventsStore, newEvent];
+	db.events = [...db.events, newEvent];
+	await writeDb(db);
 	return newEvent;
 }
 
 export async function updateEvent(id: number, data: Partial<Omit<EventModel, "id">>): Promise<EventModel> {
-	await new Promise((resolve) => setTimeout(resolve, 300));
-	eventsStore = eventsStore.map(e => e.id === id ? { ...e, ...data } : e);
-	const updated = eventsStore.find(e => e.id === id);
-	if (!updated) throw new Error("Event not found");
+	const db = await readDb();
+	const exists = db.events.some(e => e.id === id);
+	if (!exists) throw new Error("Event not found");
+	db.events = db.events.map(e => e.id === id ? { ...e, ...data } : e);
+	await writeDb(db);
+	const updated = db.events.find(e => e.id === id)!;
 	return updated;
 }
 
 export async function deleteEvent(id: number): Promise<void> {
-	await new Promise((resolve) => setTimeout(resolve, 300));
-	eventsStore = eventsStore.filter(e => e.id !== id);
+	const db = await readDb();
+	db.events = db.events.filter(e => e.id !== id);
+	await writeDb(db);
 }
 
 // ── Schools API ──────────────────────────────────────────────────────────────
 
 export async function getSchools(): Promise<SchoolModel[]> {
-	await new Promise((resolve) => setTimeout(resolve, 300));
-	return [...schoolsStore];
+	const db = await readDb();
+	return db.schools;
 }
 
 export async function getSchoolById(id: number): Promise<SchoolModel | undefined> {
-	return schoolsStore.find((s) => s.id === id);
+	const db = await readDb();
+	return db.schools.find((s) => s.id === id);
 }
 
 export async function createSchool(data: Omit<SchoolModel, "id">): Promise<SchoolModel> {
-	await new Promise((resolve) => setTimeout(resolve, 300));
-	const newId = schoolsStore.length > 0 ? Math.max(...schoolsStore.map(s => s.id)) + 1 : 1;
+	const db = await readDb();
+	const newId = db.schools.length > 0 ? Math.max(...db.schools.map(s => s.id)) + 1 : 1;
 	const newSchool: SchoolModel = { id: newId, ...data };
-	schoolsStore = [...schoolsStore, newSchool];
+	db.schools = [...db.schools, newSchool];
+	await writeDb(db);
 	return newSchool;
 }
 
 export async function updateSchool(id: number, data: Partial<Omit<SchoolModel, "id">>): Promise<SchoolModel> {
-	await new Promise((resolve) => setTimeout(resolve, 300));
-	schoolsStore = schoolsStore.map(s => s.id === id ? { ...s, ...data } : s);
-	const updated = schoolsStore.find(s => s.id === id);
-	if (!updated) throw new Error("School not found");
+	const db = await readDb();
+	const exists = db.schools.some(s => s.id === id);
+	if (!exists) throw new Error("School not found");
+	db.schools = db.schools.map(s => s.id === id ? { ...s, ...data } : s);
+	await writeDb(db);
+	const updated = db.schools.find(s => s.id === id)!;
 	return updated;
 }
 
 export async function deleteSchool(id: number): Promise<void> {
-	await new Promise((resolve) => setTimeout(resolve, 300));
-	schoolsStore = schoolsStore.filter(s => s.id !== id);
+	const db = await readDb();
+	db.schools = db.schools.filter(s => s.id !== id);
+	await writeDb(db);
 }
 
 // ── Classes API ──────────────────────────────────────────────────────────────
 
 export async function getClasses(): Promise<ClassModel[]> {
-	await new Promise((resolve) => setTimeout(resolve, 300));
-	return [...classesStore];
+	const db = await readDb();
+	return db.classes;
 }
 
 export async function getClassById(id: number): Promise<ClassModel | undefined> {
-	return classesStore.find((c) => c.id === id);
+	const db = await readDb();
+	return db.classes.find((c) => c.id === id);
 }
 
 export async function createClass(data: Omit<ClassModel, "id">): Promise<ClassModel> {
-	await new Promise((resolve) => setTimeout(resolve, 300));
-	const newId = classesStore.length > 0 ? Math.max(...classesStore.map(c => c.id)) + 1 : 1;
+	const db = await readDb();
+	const newId = db.classes.length > 0 ? Math.max(...db.classes.map(c => c.id)) + 1 : 1;
 	const newClass: ClassModel = { id: newId, ...data, eventIds: data.eventIds ?? [] };
-	classesStore = [...classesStore, newClass];
+	db.classes = [...db.classes, newClass];
+	await writeDb(db);
 	return newClass;
 }
 
 export async function updateClass(id: number, data: Partial<Omit<ClassModel, "id">>): Promise<ClassModel> {
-	await new Promise((resolve) => setTimeout(resolve, 300));
-	classesStore = classesStore.map(c => c.id === id ? { ...c, ...data } : c);
-	const updated = classesStore.find(c => c.id === id);
-	if (!updated) throw new Error("Class not found");
+	const db = await readDb();
+	const exists = db.classes.some(c => c.id === id);
+	if (!exists) throw new Error("Class not found");
+	db.classes = db.classes.map(c => c.id === id ? { ...c, ...data } : c);
+	await writeDb(db);
+	const updated = db.classes.find(c => c.id === id)!;
 	return updated;
 }
 
 export async function deleteClass(id: number): Promise<void> {
-	await new Promise((resolve) => setTimeout(resolve, 300));
-	classesStore = classesStore.filter(c => c.id !== id);
+	const db = await readDb();
+	db.classes = db.classes.filter(c => c.id !== id);
+	await writeDb(db);
 }
 
 // ── Teams API ────────────────────────────────────────────────────────────────
 
 export async function getTeams(): Promise<TeamModel[]> {
-	await new Promise((resolve) => setTimeout(resolve, 300));
-	return [...teamsStore];
+	const db = await readDb();
+	return db.teams;
 }
 
 export async function getTeamById(id: number): Promise<TeamModel | undefined> {
-	return teamsStore.find((t) => t.id === id);
+	const db = await readDb();
+	return db.teams.find((t) => t.id === id);
 }
 
 export async function createTeam(data: Omit<TeamModel, "id">): Promise<TeamModel> {
-	await new Promise((resolve) => setTimeout(resolve, 300));
-	const newId = teamsStore.length > 0 ? Math.max(...teamsStore.map(t => t.id)) + 1 : 1;
+	const db = await readDb();
+	const newId = db.teams.length > 0 ? Math.max(...db.teams.map(t => t.id)) + 1 : 1;
 	const newTeam: TeamModel = { id: newId, ...data };
-	teamsStore = [...teamsStore, newTeam];
+	db.teams = [...db.teams, newTeam];
 
 	// Automatically create Team Leader account
-	const nextAccId1 = accountsStore.length > 0 ? Math.max(...accountsStore.map(a => a.id)) + 1 : 1;
+	const nextAccId1 = db.accounts.length > 0 ? Math.max(...db.accounts.map(a => a.id)) + 1 : 1;
 	const teamLeaderAcc: AccountModel = {
 		id: nextAccId1,
 		role: "TEAM_LEADER",
@@ -166,44 +199,48 @@ export async function createTeam(data: Omit<TeamModel, "id">): Promise<TeamModel
 		createdAt: new Date().toISOString().split("T")[0],
 	};
 
-	accountsStore = [...accountsStore, teamLeaderAcc, sharedTeamAcc];
+	db.accounts = [...db.accounts, teamLeaderAcc, sharedTeamAcc];
+	await writeDb(db);
 	return newTeam;
 }
 
 export async function updateTeam(id: number, data: Partial<Omit<TeamModel, "id">>): Promise<TeamModel> {
-	await new Promise((resolve) => setTimeout(resolve, 300));
-	teamsStore = teamsStore.map(t => t.id === id ? { ...t, ...data } : t);
-	const updated = teamsStore.find(t => t.id === id);
-	if (!updated) throw new Error("Team not found");
+	const db = await readDb();
+	const exists = db.teams.some(t => t.id === id);
+	if (!exists) throw new Error("Team not found");
+	db.teams = db.teams.map(t => t.id === id ? { ...t, ...data } : t);
+	await writeDb(db);
+	const updated = db.teams.find(t => t.id === id)!;
 	return updated;
 }
 
 export async function deleteTeam(id: number): Promise<void> {
-	await new Promise((resolve) => setTimeout(resolve, 300));
-	teamsStore = teamsStore.filter(t => t.id !== id);
-	accountsStore = accountsStore.filter(a => a.teamId !== id);
+	const db = await readDb();
+	db.teams = db.teams.filter(t => t.id !== id);
+	db.accounts = db.accounts.filter(a => a.teamId !== id);
+	await writeDb(db);
 }
 
 // ── Stations API ─────────────────────────────────────────────────────────────
 
 export async function getStations(): Promise<StationModel[]> {
-	await new Promise((resolve) => setTimeout(resolve, 300));
-	return [...stationsStore];
+	const db = await readDb();
+	return db.stations;
 }
 
 export async function getStationById(id: number): Promise<StationModel | undefined> {
-	await new Promise((resolve) => setTimeout(resolve, 150));
-	return stationsStore.find((s) => s.id === id);
+	const db = await readDb();
+	return db.stations.find((s) => s.id === id);
 }
 
 export async function createStation(data: Omit<StationModel, "id">): Promise<StationModel> {
-	await new Promise((resolve) => setTimeout(resolve, 300));
-	const newId = stationsStore.length > 0 ? Math.max(...stationsStore.map(s => s.id)) + 1 : 1;
+	const db = await readDb();
+	const newId = db.stations.length > 0 ? Math.max(...db.stations.map(s => s.id)) + 1 : 1;
 	const newStation: StationModel = { id: newId, ...data, entries: data.entries ?? [] };
-	stationsStore = [...stationsStore, newStation];
+	db.stations = [...db.stations, newStation];
 
 	// Automatically create Station Guard account
-	const nextAccId = accountsStore.length > 0 ? Math.max(...accountsStore.map(a => a.id)) + 1 : 1;
+	const nextAccId = db.accounts.length > 0 ? Math.max(...db.accounts.map(a => a.id)) + 1 : 1;
 	const stationGuardAcc: AccountModel = {
 		id: nextAccId,
 		role: "STATION_GUARD",
@@ -213,28 +250,31 @@ export async function createStation(data: Omit<StationModel, "id">): Promise<Sta
 		name: `Vagt - ${newStation.name}`,
 		createdAt: new Date().toISOString().split("T")[0],
 	};
-	accountsStore = [...accountsStore, stationGuardAcc];
-
+	db.accounts = [...db.accounts, stationGuardAcc];
+	await writeDb(db);
 	return newStation;
 }
 
 export async function updateStation(id: number, data: Partial<Omit<StationModel, "id">>): Promise<StationModel> {
-	await new Promise((resolve) => setTimeout(resolve, 300));
-	stationsStore = stationsStore.map(s => s.id === id ? { ...s, ...data } : s);
-	const updated = stationsStore.find(s => s.id === id);
-	if (!updated) throw new Error("Station not found");
+	const db = await readDb();
+	const exists = db.stations.some(s => s.id === id);
+	if (!exists) throw new Error("Station not found");
+	db.stations = db.stations.map(s => s.id === id ? { ...s, ...data } : s);
+	await writeDb(db);
+	const updated = db.stations.find(s => s.id === id)!;
 	return updated;
 }
 
 export async function deleteStation(id: number): Promise<void> {
-	await new Promise((resolve) => setTimeout(resolve, 300));
-	stationsStore = stationsStore.filter(s => s.id !== id);
-	accountsStore = accountsStore.filter(a => a.stationId !== id);
+	const db = await readDb();
+	db.stations = db.stations.filter(s => s.id !== id);
+	db.accounts = db.accounts.filter(a => a.stationId !== id);
+	await writeDb(db);
 }
 
 export async function updateStationEntry(stationId: number, teamId: number, time: string): Promise<StationModel> {
-	await new Promise((resolve) => setTimeout(resolve, 200));
-	const station = stationsStore.find(s => s.id === stationId);
+	const db = await readDb();
+	const station = db.stations.find(s => s.id === stationId);
 	if (!station) throw new Error("Station not found");
 
 	const currentEntries = station.entries ?? [];
@@ -247,67 +287,71 @@ export async function updateStationEntry(stationId: number, teamId: number, time
 		newEntries = [...currentEntries, { teamId, time }];
 	}
 
-	stationsStore = stationsStore.map(s => s.id === stationId ? { ...s, entries: newEntries } : s);
-	const updated = stationsStore.find(s => s.id === stationId);
-	if (!updated) throw new Error("Station not found");
+	db.stations = db.stations.map(s => s.id === stationId ? { ...s, entries: newEntries } : s);
+	await writeDb(db);
+	const updated = db.stations.find(s => s.id === stationId)!;
 	return updated;
 }
 
 // ── Accounts API ─────────────────────────────────────────────────────────────
 
 export async function getAccounts(): Promise<AccountModel[]> {
-	await new Promise((resolve) => setTimeout(resolve, 300));
-	return [...accountsStore];
+	const db = await readDb();
+	return db.accounts;
 }
 
 export async function getAccountById(id: number): Promise<AccountModel | undefined> {
-	await new Promise((resolve) => setTimeout(resolve, 150));
-	return accountsStore.find((a) => a.id === id);
+	const db = await readDb();
+	return db.accounts.find((a) => a.id === id);
 }
 
 export async function getAccountsByRole(role: AccountRole): Promise<AccountModel[]> {
-	await new Promise((resolve) => setTimeout(resolve, 200));
-	return accountsStore.filter((a) => a.role === role);
+	const db = await readDb();
+	return db.accounts.filter((a) => a.role === role);
 }
 
 export async function getAccountsByStationId(stationId: number): Promise<AccountModel[]> {
-	await new Promise((resolve) => setTimeout(resolve, 150));
-	return accountsStore.filter((a) => a.stationId === stationId);
+	const db = await readDb();
+	return db.accounts.filter((a) => a.stationId === stationId);
 }
 
 export async function getAccountsByTeamId(teamId: number): Promise<AccountModel[]> {
-	await new Promise((resolve) => setTimeout(resolve, 150));
-	return accountsStore.filter((a) => a.teamId === teamId);
+	const db = await readDb();
+	return db.accounts.filter((a) => a.teamId === teamId);
 }
 
 export async function createAccount(data: Omit<AccountModel, "id">): Promise<AccountModel> {
-	await new Promise((resolve) => setTimeout(resolve, 300));
-	const newId = accountsStore.length > 0 ? Math.max(...accountsStore.map(a => a.id)) + 1 : 1;
+	const db = await readDb();
+	const newId = db.accounts.length > 0 ? Math.max(...db.accounts.map(a => a.id)) + 1 : 1;
 	const newAccount: AccountModel = {
 		id: newId,
 		...data,
 		createdAt: data.createdAt ?? new Date().toISOString().split("T")[0],
 	};
-	accountsStore = [...accountsStore, newAccount];
+	db.accounts = [...db.accounts, newAccount];
+	await writeDb(db);
 	return newAccount;
 }
 
 export async function updateAccount(id: number, data: Partial<Omit<AccountModel, "id">>): Promise<AccountModel> {
-	await new Promise((resolve) => setTimeout(resolve, 300));
-	accountsStore = accountsStore.map(a => a.id === id ? { ...a, ...data } : a);
-	const updated = accountsStore.find(a => a.id === id);
-	if (!updated) throw new Error("Account not found");
+	const db = await readDb();
+	const exists = db.accounts.some(a => a.id === id);
+	if (!exists) throw new Error("Account not found");
+	db.accounts = db.accounts.map(a => a.id === id ? { ...a, ...data } : a);
+	await writeDb(db);
+	const updated = db.accounts.find(a => a.id === id)!;
 	return updated;
 }
 
 export async function deleteAccount(id: number): Promise<void> {
-	await new Promise((resolve) => setTimeout(resolve, 300));
-	accountsStore = accountsStore.filter(a => a.id !== id);
+	const db = await readDb();
+	db.accounts = db.accounts.filter(a => a.id !== id);
+	await writeDb(db);
 }
 
 export async function resetAccountPassword(id: number): Promise<{ account: AccountModel; newPassword: string }> {
-	await new Promise((resolve) => setTimeout(resolve, 250));
-	const account = accountsStore.find(a => a.id === id);
+	const db = await readDb();
+	const account = db.accounts.find(a => a.id === id);
 	if (!account) throw new Error("Account not found");
 
 	let newPassword = "";
@@ -321,7 +365,8 @@ export async function resetAccountPassword(id: number): Promise<{ account: Accou
 		newPassword = generateRandomPassword(10);
 	}
 
-	accountsStore = accountsStore.map(a => a.id === id ? { ...a, password: newPassword } : a);
-	const updated = accountsStore.find(a => a.id === id)!;
+	db.accounts = db.accounts.map(a => a.id === id ? { ...a, password: newPassword } : a);
+	await writeDb(db);
+	const updated = db.accounts.find(a => a.id === id)!;
 	return { account: updated, newPassword };
 }
