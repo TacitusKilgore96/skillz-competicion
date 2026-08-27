@@ -41,7 +41,7 @@ const teamBadgeIcons: Record<number, string> = {
   10: "/images/lightbulb-solid-full.svg",
 };
 
-export default function StationPage() {
+export default function team() {
   const [teamStatuses, setTeamStatuses] = useState(teams);
 
   const toggleVisit = (id: number) => {
@@ -264,7 +264,7 @@ export default function StationPage() {
                       </div>
                     </div>
 
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-warning-background text-xl">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-dark text-xl">
                       ✅
                     </div>
 
