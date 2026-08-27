@@ -4,6 +4,42 @@
       "id": 0,
       "title": "Event Title",
       "date": "2023-09-20"
+    },
+    {
+      "id": 1,
+      "title": "DM i Skills 2024",
+      "date": "2024-04-18"
+    },
+    {
+      "id": 2,
+      "title": "Regionsmesterskab 2024",
+      "date": "2024-05-12"
+    }
+  ],
+  "accounts": [
+    {
+      "id": 0,
+      "type": "ORGANIZER",
+      "username": "organizer",
+      "password": "password123"
+    },
+    {
+      "id": 1,
+      "type": "POST_GUARD",
+      "username": "post_guard",
+      "password": "password123"
+    },
+    {
+      "id": 2,
+      "type": "TEAM_LEAD",
+      "username": "team_leader",
+      "password": "leader_password!123"
+    },
+    {
+      "id": 3,
+      "type": "TEAM_MEMBERS",
+      "username": "team_member",
+      "password": "member_password!123"
     }
   ]
 }

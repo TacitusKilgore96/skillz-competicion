@@ -17,7 +17,7 @@ export const button = tv({
 export const iconButton = tv({
 	base: cn(
 		button.base,
-		"p-2 aspect-square"
+		"p-2 size-fit"
 	),
 	variants: {
 		shape: {

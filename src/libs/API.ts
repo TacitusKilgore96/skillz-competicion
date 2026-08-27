@@ -1,4 +1,5 @@
 import db from "@/db.local.json"
+import {EventModel} from "@/models/EventModel";
 
 async function simulateLoading() {
 	return new Promise<void>((resolve) => {
@@ -8,7 +9,7 @@ async function simulateLoading() {
 	});
 }
 
-export async function getEvents() {
+export async function getEvents(): Promise<EventModel[]> {
 	await simulateLoading();
 	return Promise.resolve(db.events as EventModel[])
 }

@@ -3,7 +3,8 @@
 import React, {useEffect, useState} from "react";
 import Link from "next/link";
 import {cn} from "tailwind-variants";
-import {usePathname} from "next/navigation";
+import {useParams, usePathname} from "next/navigation";
+import EventSelector from "@/components/admin/EventSelector";
 
 interface ShellProps {
 	pageTitle: string;
@@ -44,7 +45,7 @@ export function EventShell({pageTitle, children}: ShellProps) {
 					<PathLink label="Klasser" href="classes" pathRegex={/^classes/}/>
 					<PathLink label="Hold" href="teams" pathRegex={/^teams/}/>
 					<PathLink label="Stationer" href="stations" pathRegex={/^stations/}/>
-					<PathLink label="Accounts" href="accounts" pathRegex={/^accounts/}/>
+					<PathLink label="Kontoer" href="accounts" pathRegex={/^accounts/}/>
 				</nav>
 			</aside>
 
@@ -55,6 +56,9 @@ export function EventShell({pageTitle, children}: ShellProps) {
 					<div className={"text-center"}>
 						<p className={"font-medium uppercase"} suppressHydrationWarning>{dateStr}</p>
 						<p className={"font-semibold text-xl"} suppressHydrationWarning>{timeStr}</p>
+					</div>
+					<div className={"ml-auto"}>
+						<EventSelector/>
 					</div>
 				</header>
 
@@ -74,11 +78,13 @@ interface PathLinkProps {
 
 function PathLink({label, href, pathRegex}: PathLinkProps) {
 	const pathname = usePathname();
+	const {eventId} = useParams();
+
 	const trimmedPath = pathname.replace(/^\/admin\/[0-9]+/, "")
 	const isActive = trimmedPath.match(pathRegex);
 
 	return (
-		<Link href={href} className={cn(
+		<Link href={`/admin/${eventId}/${href}`} className={cn(
 			"text-white hover:text-slate-800 hover:bg-hover p-2  rounded-lg transition-colors uppercase block my-1",
 			isActive ? "font-bold" : ""
 		)}>
