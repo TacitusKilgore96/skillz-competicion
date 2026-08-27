@@ -41,7 +41,6 @@ export function EventShell({pageTitle, children}: ShellProps) {
 
 				<nav className={"p-4 gap-2 text-center flex-1"}>
 					<PathLink label="Oversigt" href="" pathRegex={/^$/}/>
-					<PathLink label="Skoler" href="schools" pathRegex={/^schools/}/>
 					<PathLink label="Klasser" href="classes" pathRegex={/^classes/}/>
 					<PathLink label="Hold" href="teams" pathRegex={/^teams/}/>
 					<PathLink label="Stationer" href="stations" pathRegex={/^stations/}/>
