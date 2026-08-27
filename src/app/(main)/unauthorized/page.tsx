@@ -4,17 +4,13 @@ import { IconLoader2 } from "@tabler/icons-react";
 
 export default function UnauthorizedPage() {
 	return (
-		<main className="min-h-screen bg-slate-900 flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
-			{/* Subtle background glow */}
-			<div className="absolute top-1/4 -left-32 w-96 h-96 bg-red-500/10 rounded-full blur-3xl pointer-events-none" />
-			<div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-
-			<div className="relative z-10 w-full max-w-md">
+		<main className="min-h-screen bg-background text-primary flex items-center justify-center p-4 sm:p-6">
+			<div className="w-full max-w-md">
 				<Suspense
 					fallback={
-						<div className="flex flex-col items-center justify-center text-slate-400 gap-2 p-8 bg-white rounded-lg border border-slate-200">
-							<IconLoader2 size={24} className="animate-spin text-slate-700" />
-							<p className="text-xs text-slate-500 font-medium">Indlæser...</p>
+						<div className="flex flex-col items-center justify-center text-secondary gap-2 p-8 bg-box-background rounded-2xl border border-border">
+							<IconLoader2 size={24} className="animate-spin text-primary" />
+							<p className="text-xs text-secondary font-medium">Indlæser...</p>
 						</div>
 					}
 				>

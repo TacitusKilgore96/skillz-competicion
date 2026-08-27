@@ -2,8 +2,6 @@
 
 import React, { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
-import { cn } from "tailwind-variants";
 import {
 	IconLock,
 	IconUser,
@@ -11,16 +9,11 @@ import {
 	IconEyeOff,
 	IconLoader2,
 	IconAlertTriangle,
-	IconCheck,
-	IconTrophy,
 	IconArrowRight,
 	IconShieldCheck,
 	IconFlag,
 	IconUsers,
 } from "@tabler/icons-react";
-import { button } from "@/components/admin/Button";
-import textField from "@/components/admin/TextField";
-import card from "@/components/admin/Card";
 import { loginUser } from "@/libs/auth";
 
 export default function Login() {
@@ -54,9 +47,6 @@ export default function Login() {
 		try {
 			const user = await loginUser(trimmedUser, password);
 
-			// Redirect logic:
-			// If a valid redirect target is given, use that.
-			// Otherwise redirect according to role.
 			if (redirectUrl && redirectUrl.startsWith("/")) {
 				window.location.href = redirectUrl;
 			} else {
@@ -78,44 +68,39 @@ export default function Login() {
 	};
 
 	return (
-		<div className="w-full max-w-md mx-auto">
-			{/* Login Card */}
-			<div className={cn(card(), "p-6 sm:p-8 space-y-6")}>
-				{/* Header Branding */}
-				<div className="text-center space-y-1.5">
-					<div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-slate-900 text-white font-bold mb-1">
-						<IconTrophy size={20} />
-					</div>
-					<h1 className="text-xl font-bold text-slate-900">Log ind på Skills</h1>
-					<p className="text-xs text-slate-500 max-w-xs mx-auto">
+		<div className="w-full max-w-lg mx-auto">
+			<div className="rounded-2xl border border-border bg-box-background p-7 sm:p-9 space-y-6 text-primary shadow-xl">
+				<div className="space-y-1.5">
+					<p className="text-xs uppercase tracking-[0.35em] text-secondary font-bold">
+						login
+					</p>
+					<h1 className="text-2xl font-black text-primary">Log ind på Skills</h1>
+					<p className="text-xs text-secondary">
 						{redirectUrl
-							? "Log venligst ind for at fortsætte til den ønskede side"
-							: "Indtast dine loginoplysninger for at få adgang til din konto"}
+							? "Log ind for at fortsætte til den valgte side"
+							: "Indtast brugernavn og adgangskode for at fortsætte"}
 					</p>
 				</div>
 
-				{/* Error Notice */}
 				{error && (
-					<div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2 animate-in fade-in duration-150">
-						<IconAlertTriangle size={16} className="shrink-0 text-red-600" />
+					<div className="p-3.5 rounded-xl bg-danger-background border border-danger/40 text-danger text-xs flex items-center gap-2.5">
+						<IconAlertTriangle size={17} className="shrink-0 text-danger" />
 						<span>{error}</span>
 					</div>
 				)}
 
-				{/* Login Form */}
-				<form onSubmit={handleSubmit} className="space-y-4">
-					{/* Username */}
+				<form onSubmit={handleSubmit} className="space-y-5">
 					<div>
 						<label
 							htmlFor="login-username"
-							className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5"
+							className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-2"
 						>
 							Brugernavn
 						</label>
 						<div className="relative">
 							<IconUser
-								size={16}
-								className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+								size={17}
+								className="absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary"
 							/>
 							<input
 								id="login-username"
@@ -124,25 +109,24 @@ export default function Login() {
 								autoFocus
 								autoComplete="username"
 								placeholder="Indtast dit brugernavn..."
-								className={cn(textField(), "w-full pl-9 pr-3 py-2 text-sm")}
+								className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-background text-sm text-primary placeholder:text-secondary/50 outline-none focus:border-green transition"
 								value={username}
 								onChange={(e) => setUsername(e.target.value)}
 							/>
 						</div>
 					</div>
 
-					{/* Password */}
 					<div>
 						<label
 							htmlFor="login-password"
-							className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5"
+							className="block text-xs font-semibold uppercase tracking-wider text-secondary mb-2"
 						>
 							Adgangskode
 						</label>
 						<div className="relative">
 							<IconLock
-								size={16}
-								className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+								size={17}
+								className="absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary"
 							/>
 							<input
 								id="login-password"
@@ -150,14 +134,14 @@ export default function Login() {
 								required
 								autoComplete="current-password"
 								placeholder="••••••••"
-								className={cn(textField(), "w-full pl-9 pr-10 py-2 text-sm font-mono")}
+								className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-border bg-background text-sm font-mono text-primary placeholder:text-secondary/50 outline-none focus:border-green transition"
 								value={password}
 								onChange={(e) => setPassword(e.target.value)}
 							/>
 							<button
 								type="button"
 								onClick={() => setShowPassword(!showPassword)}
-								className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+								className="absolute right-3.5 top-1/2 -translate-y-1/2 text-secondary hover:text-primary transition"
 								tabIndex={-1}
 							>
 								{showPassword ? <IconEyeOff size={16} /> : <IconEye size={16} />}
@@ -165,14 +149,10 @@ export default function Login() {
 						</div>
 					</div>
 
-					{/* Submit Button */}
 					<button
 						type="submit"
 						disabled={loading}
-						className={cn(
-							button(),
-							"w-full py-2.5 px-4 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 border-transparent flex items-center justify-center gap-2 mt-2"
-						)}
+						className="w-full py-3 px-4 rounded-xl bg-accent-blue-background hover:opacity-90 font-bold text-sm text-white flex items-center justify-center gap-2 cursor-pointer transition disabled:opacity-50"
 					>
 						{loading ? (
 							<>
@@ -182,28 +162,27 @@ export default function Login() {
 						) : (
 							<>
 								<span>Log ind</span>
-								<IconArrowRight size={15} />
+								<IconArrowRight size={16} />
 							</>
 						)}
 					</button>
 				</form>
 
-				{/* Quick Test Accounts Pill Selection */}
-				<div className="pt-4 border-t border-slate-100 space-y-2">
-					<p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 text-center">
-						Hurtig test login (udvikling)
+				<div className="pt-5 border-t border-border space-y-2.5">
+					<p className="text-[11px] font-semibold uppercase tracking-wider text-secondary text-center">
+						Hurtig login (genvej)
 					</p>
-					<div className="grid grid-cols-3 gap-1.5">
+					<div className="grid grid-cols-3 gap-2">
 						<button
 							type="button"
 							onClick={() => handleQuickFill("organizer", "password123")}
-							className="p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-center text-xs transition-colors"
+							className="p-2.5 rounded-xl border border-border bg-background hover:bg-box-background text-primary text-center text-xs transition"
 						>
-							<div className="flex items-center justify-center gap-1 font-semibold text-[11px]">
-								<IconShieldCheck size={13} className="text-slate-700" />
+							<div className="flex items-center justify-center gap-1 font-bold text-[11px]">
+								<IconShieldCheck size={14} className="text-warning" />
 								<span>Arrangør</span>
 							</div>
-							<span className="text-[10px] text-slate-400 block mt-0.5 font-mono">
+							<span className="text-[10px] text-secondary block mt-0.5 font-mono">
 								organizer
 							</span>
 						</button>
@@ -211,13 +190,13 @@ export default function Login() {
 						<button
 							type="button"
 							onClick={() => handleQuickFill("post_guard", "password123")}
-							className="p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-center text-xs transition-colors"
+							className="p-2.5 rounded-xl border border-border bg-background hover:bg-box-background text-primary text-center text-xs transition"
 						>
-							<div className="flex items-center justify-center gap-1 font-semibold text-[11px]">
-								<IconFlag size={13} className="text-slate-700" />
+							<div className="flex items-center justify-center gap-1 font-bold text-[11px]">
+								<IconFlag size={14} className="text-success" />
 								<span>Postvagt</span>
 							</div>
-							<span className="text-[10px] text-slate-400 block mt-0.5 font-mono">
+							<span className="text-[10px] text-secondary block mt-0.5 font-mono">
 								post_guard
 							</span>
 						</button>
@@ -225,13 +204,13 @@ export default function Login() {
 						<button
 							type="button"
 							onClick={() => handleQuickFill("8a_hold1", "password123")}
-							className="p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-center text-xs transition-colors"
+							className="p-2.5 rounded-xl border border-border bg-background hover:bg-box-background text-primary text-center text-xs transition"
 						>
-							<div className="flex items-center justify-center gap-1 font-semibold text-[11px]">
-								<IconUsers size={13} className="text-slate-700" />
+							<div className="flex items-center justify-center gap-1 font-bold text-[11px]">
+								<IconUsers size={14} className="text-id-nr" />
 								<span>Hold 1</span>
 							</div>
-							<span className="text-[10px] text-slate-400 block mt-0.5 font-mono">
+							<span className="text-[10px] text-secondary block mt-0.5 font-mono">
 								8a_hold1
 							</span>
 						</button>
