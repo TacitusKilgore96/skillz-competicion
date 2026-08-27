@@ -11,24 +11,24 @@ interface ShellProps {
 }
 
 export function AdminShell({pageTitle, children, currentPath}: ShellProps) {
-	const [now, setNow] = useState<Date | null>(() => typeof window !== "undefined" ? new Date() : null);
+	const [now, setNow] = useState<Date>(() => new Date());
 
 	useEffect(() => {
 		const timer = setInterval(() => setNow(new Date()), 60000);
 		return () => clearInterval(timer);
 	}, []);
 
-	const dateStr = now ? now.toLocaleDateString('da-DK', {
+	const dateStr = now.toLocaleDateString('da-DK', {
 		weekday: 'long',
 		year: 'numeric',
 		month: 'long',
 		day: 'numeric'
-	}) : '...';
+	});
 
-	const timeStr = now ? now.toLocaleTimeString('da-DK', {
+	const timeStr = now.toLocaleTimeString('da-DK', {
 		hour: '2-digit',
 		minute: '2-digit'
-	}) : '...';
+	});
 
 	return (
 		<div className={"flex h-screen w-full"}>
@@ -54,8 +54,8 @@ export function AdminShell({pageTitle, children, currentPath}: ShellProps) {
 					<h3 className={"font-bold text-2xl uppercase"}>{pageTitle}</h3>
 
 					<div className={"text-center"}>
-						<p className={"font-medium uppercase"}>{dateStr}</p>
-						<p className={"font-semibold text-xl"}>{timeStr}</p>
+						<p className={"font-medium uppercase"} suppressHydrationWarning>{dateStr}</p>
+						<p className={"font-semibold text-xl"} suppressHydrationWarning>{timeStr}</p>
 					</div>
 				</header>
 
