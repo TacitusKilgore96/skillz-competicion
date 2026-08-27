@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+@theme inline {
+    --color-sidebar: var(--color-slate-800);
+    --color-hover: #4ac100;
+}
