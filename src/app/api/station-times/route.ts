@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStationTimes, createStationTime } from "@/libs/db";
+import { broadcastUpdate } from "@/libs/eventBus";
 
 export async function GET(request: NextRequest) {
 	try {
@@ -35,6 +36,7 @@ export async function POST(request: NextRequest) {
 			);
 		}
 		const newTime = await createStationTime(body);
+		broadcastUpdate("times", newTime);
 		return NextResponse.json({ success: true, data: newTime }, { status: 201 });
 	} catch (err: unknown) {
 		const msg = err instanceof Error ? err.message : "Kunne ikke oprette tidsregistrering";

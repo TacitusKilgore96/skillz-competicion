@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStationTimeById, updateStationTime, deleteStationTime } from "@/libs/db";
+import { broadcastUpdate } from "@/libs/eventBus";
 
 export async function GET(
 	request: NextRequest,
@@ -34,6 +35,7 @@ export async function PUT(
 		}
 		const body = await request.json();
 		const updated = await updateStationTime(numId, body);
+		broadcastUpdate("times", updated);
 		return NextResponse.json({ success: true, data: updated });
 	} catch (err: unknown) {
 		const msg = err instanceof Error ? err.message : "Kunne ikke opdatere tidsregistrering";
@@ -52,6 +54,7 @@ export async function DELETE(
 			return NextResponse.json({ success: false, error: "Ugyldigt ID" }, { status: 400 });
 		}
 		await deleteStationTime(numId);
+		broadcastUpdate("times", { deletedId: numId });
 		return NextResponse.json({ success: true });
 	} catch (err: unknown) {
 		const msg = err instanceof Error ? err.message : "Kunne ikke slette tidsregistrering";

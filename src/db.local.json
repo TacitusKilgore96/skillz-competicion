@@ -5,8 +5,8 @@
       "title": "Event Title",
       "date": "2023-09-20",
       "status": "FINISHED",
-      "startedAt": "2026-08-27T22:56:06.118Z",
-      "endedAt": "2026-08-27T22:58:04.899Z",
+      "startedAt": "2026-08-27T23:01:46.038Z",
+      "endedAt": "2026-08-27T23:08:54.195Z",
       "isConfirmedOver": true
     },
     {
@@ -297,14 +297,6 @@
       "teamId": 1,
       "timeSeconds": 178,
       "completedAt": "2024-04-18T10:30:00.000Z"
-    },
-    {
-      "id": 2,
-      "stationId": 0,
-      "teamId": 2,
-      "eventId": 0,
-      "timeSeconds": 60,
-      "completedAt": "2026-08-27T22:57:30.316Z"
     }
   ]
 }

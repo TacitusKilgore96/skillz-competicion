@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getEventById, updateEvent, deleteEvent } from "@/libs/db";
 import { UpdateEventDTO } from "@/models/EventModel";
+import { broadcastUpdate } from "@/libs/eventBus";
 
 export async function GET(
 	request: NextRequest,
@@ -30,6 +31,7 @@ export async function PUT(
 		const { id } = await params;
 		const body: UpdateEventDTO = await request.json();
 		const updated = await updateEvent(Number(id), body);
+		broadcastUpdate("event", updated);
 		return NextResponse.json({ success: true, data: updated });
 	} catch (err: unknown) {
 		const msg = err instanceof Error ? err.message : "Fejl ved opdatering af begivenhed";
@@ -44,6 +46,7 @@ export async function DELETE(
 	try {
 		const { id } = await params;
 		await deleteEvent(Number(id));
+		broadcastUpdate("event", { deletedId: Number(id) });
 		return NextResponse.json({ success: true, message: "Begivenhed slettet" });
 	} catch (err: unknown) {
 		const msg = err instanceof Error ? err.message : "Fejl ved sletning af begivenhed";
