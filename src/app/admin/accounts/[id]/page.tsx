@@ -40,8 +40,8 @@ const ROLE_INFO: Record<
 		label: "Stationsvagt",
 		badgeClass: "bg-amber-100 text-amber-800 border-amber-200",
 		accessTitle: "Stationsside (Ingen kontrol center adgang)",
-		desc: "Denne konto er knyttet til en specifik station og oprettes automatisk ved oprettelse af en station. Kontoen har udelukkende adgang til at registrere tider på sin egen station og har IKKE adgang til Kontrol Centeret.",
-		accessLevel: "Begrænset til stationens tidsregistrering.",
+		desc: "Denne konto er knyttet til en specifik post/station og oprettes automatisk ved oprettelse af en station. Kontoen har udelukkende adgang til at registrere tider på sin egen post og har IKKE adgang til Kontrol Centeret.",
+		accessLevel: "Begrænset til postens tidsregistrering.",
 	},
 	TEAM_LEADER: {
 		label: "Holdleder",
@@ -53,9 +53,9 @@ const ROLE_INFO: Record<
 	SHARED_TEAM: {
 		label: "Fælles Holdkonto",
 		badgeClass: "bg-emerald-100 text-emerald-800 border-emerald-200",
-		accessTitle: "Fælles Holdside / Post (Ingen kontrol center adgang)",
-		desc: "Denne konto deles mellem alle medlemmer på holdet og kræver blot adgangskode/PIN-kode ved posterne for at se deres statistikker. Kontoen har IKKE adgang til Kontrol Centeret.",
-		accessLevel: "Begrænset til visning af egne holdstatistikker og tider på poster.",
+		accessTitle: "Fælles Holdside (Ingen kontrol center adgang)",
+		desc: "Denne konto deles mellem alle medlemmer på holdet og kræver blot adgangskode/PIN-kode for at se deres statistikker. Kontoen er knyttet til holdet (ikke en post) og har IKKE adgang til Kontrol Centeret.",
+		accessLevel: "Begrænset til visning af egne holdstatistikker og tider.",
 	},
 };
 
@@ -342,7 +342,7 @@ function EditForm({
 					</div>
 					<p className={"text-xs text-gray-500"}>
 						{role === "SHARED_TEAM"
-							? "For fælles holdkonti anvendes denne kode direkte ved posterne for at få adgang til holdets data."
+							? "For fælles holdkonti anvendes denne kode direkte af holdmedlemmerne for at få adgang til holdets data."
 							: "Brugeren anvender dette brugernavn og adgangskode ved login."}
 					</p>
 				</div>

@@ -227,7 +227,7 @@ function EditForm({team, classes, schools, events, teamAccounts, onUpdated, onDe
 										<p className={"text-[11px] text-gray-500"}>
 											{isLeader
 												? "Konto til holdlederen/læreren for holdet."
-												: "Delt adgangskode/PIN til holdmedlemmer ved posterne."}
+												: "Delt adgangskode/PIN til holdmedlemmer for adgang til holdstatistik."}
 										</p>
 									</div>
 								);

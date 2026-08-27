@@ -44,7 +44,7 @@ const ROLE_INFO: Record<
 		badgeClass: "bg-amber-100 text-amber-800 border-amber-200",
 		accessText: "Stationsside (Ingen kontrol center)",
 		hasAdminAccess: false,
-		desc: "Tilknyttet en specifik station. Oprettes automatisk ved stationsoprettelse.",
+		desc: "Tilknyttet en specifik post/station. Oprettes automatisk ved stationsoprettelse.",
 	},
 	TEAM_LEADER: {
 		label: "Holdleder",
@@ -56,9 +56,9 @@ const ROLE_INFO: Record<
 	SHARED_TEAM: {
 		label: "Fælles Holdkonto",
 		badgeClass: "bg-emerald-100 text-emerald-800 border-emerald-200",
-		accessText: "Holdside / Post (Ingen kontrol center)",
+		accessText: "Holdside (Ingen kontrol center)",
 		hasAdminAccess: false,
-		desc: "Delt adgangskode til holdmedlemmer på poster for visning af stats.",
+		desc: "Delt adgangskode til holdmedlemmer for visning af holdets statistikker.",
 	},
 };
 

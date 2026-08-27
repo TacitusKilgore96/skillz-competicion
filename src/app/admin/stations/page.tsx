@@ -259,7 +259,7 @@ export default function StationsPage() {
 												<div className={"col-span-3 flex justify-end"}>
 													{status.totalEligible === 0 && status.setTimesCount === 0 ? (
 														<span className={"px-3 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600"}>
-															0 hold tilknyttet
+															0 deltagende hold
 														</span>
 													) : status.allSet ? (
 														<span className={"px-3 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 flex items-center gap-1"}>
