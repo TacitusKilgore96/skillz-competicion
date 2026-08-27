@@ -7,6 +7,7 @@ import { button } from "@/components/admin/Button";
 import useAsync from "@/hooks/useAsync";
 import {
 	deleteStation,
+	getAccountsByStationId,
 	getClasses,
 	getEvents,
 	getSchools,
@@ -14,6 +15,7 @@ import {
 	getTeams,
 	updateStation
 } from "@/libs/API";
+import type { AccountModel } from "@/models/AccountModel";
 import AsyncDataRenderer from "@/components/DataComponent";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -35,11 +37,12 @@ interface EditFormProps {
 	classes: ClassModel[];
 	schools: SchoolModel[];
 	teams: TeamModel[];
+	guardAccounts: AccountModel[];
 	onUpdated: (station: StationModel) => void;
 	onDeleted: () => void;
 }
 
-function EditForm({ station, events, classes, schools, teams, onUpdated, onDeleted }: EditFormProps) {
+function EditForm({ station, events, classes, schools, teams, guardAccounts, onUpdated, onDeleted }: EditFormProps) {
 	// Station basic details
 	const [name, setName] = useState(station.name);
 	const [eventId, setEventId] = useState<number>(station.eventId);
@@ -314,6 +317,58 @@ function EditForm({ station, events, classes, schools, teams, onUpdated, onDelet
 				</form>
 			</div>
 
+			{/* Station Guard Login Credentials Card */}
+			<div className={cn(card(), "bg-white p-6 flex flex-col gap-4 shadow-sm border border-amber-200/80 bg-amber-50/20")}>
+				<div className={"flex items-center justify-between"}>
+					<div className={"flex items-center gap-2"}>
+						<span className={"text-lg"}>🛡️</span>
+						<h3 className={"text-base font-bold uppercase text-gray-800"}>Tilknyttet Stationsvagt Konto</h3>
+					</div>
+					<span className={"text-xs px-2.5 py-0.5 rounded-full font-semibold bg-amber-100 text-amber-800 border border-amber-200"}>
+						Stationsvagt
+					</span>
+				</div>
+
+				<p className={"text-xs text-gray-600"}>
+					Denne konto er oprettet automatisk til denne station. Stationsvagten bruger disse oplysninger til at logge ind og tage tid. Kontoen har ikke adgang til Kontrol Centeret.
+				</p>
+
+				{guardAccounts.length === 0 ? (
+					<p className={"text-xs text-gray-400 italic"}>Ingen stationsvagt-konto fundet.</p>
+				) : (
+					<div className={"flex flex-col gap-2"}>
+						{guardAccounts.map((acc) => (
+							<div
+								key={acc.id}
+								className={"p-3 bg-white rounded-lg border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm"}
+							>
+								<div className={"flex flex-col gap-0.5"}>
+									<div className={"flex items-center gap-2"}>
+										<span className={"text-xs text-gray-400 font-semibold uppercase"}>Brugernavn:</span>
+										<strong className={"text-gray-900 font-mono"}>{acc.username}</strong>
+									</div>
+									<div className={"flex items-center gap-2"}>
+										<span className={"text-xs text-gray-400 font-semibold uppercase"}>Adgangskode:</span>
+										<span className={"font-mono bg-gray-100 px-2 py-0.5 rounded text-gray-800 font-semibold"}>
+											{acc.password}
+										</span>
+									</div>
+								</div>
+
+								<div className={"flex items-center gap-2"}>
+									<Link
+										href={`/admin/accounts/${acc.id}`}
+										className={cn(button({ shape: "pill" }), "text-xs hover:bg-hover hover:text-white")}
+									>
+										Administrer konto →
+									</Link>
+								</div>
+							</div>
+						))}
+					</div>
+				)}
+			</div>
+
 			{/* Time Entries & Activity Tracking Card */}
 			<div className={cn(card(), "bg-white p-8 flex flex-col gap-6 shadow-sm")}>
 				{/* Header & Stats */}
@@ -561,6 +616,7 @@ export default function StationDetailPage({ params }: { params: Promise<{ id: st
 	const { data: classes } = useAsync<ClassModel[]>(getClasses, []);
 	const { data: schools } = useAsync<SchoolModel[]>(getSchools, []);
 	const { data: teams } = useAsync<TeamModel[]>(getTeams, []);
+	const { data: guardAccounts } = useAsync<AccountModel[]>(() => getAccountsByStationId(stationId), [stationId]);
 
 	function handleUpdated(updated: StationModel) {
 		setStation(updated);
@@ -605,6 +661,7 @@ export default function StationDetailPage({ params }: { params: Promise<{ id: st
 								classes={classes ?? []}
 								schools={schools ?? []}
 								teams={teams ?? []}
+								guardAccounts={guardAccounts ?? []}
 								onUpdated={handleUpdated}
 								onDeleted={handleDeleted}
 							/>

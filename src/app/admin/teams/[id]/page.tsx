@@ -5,7 +5,16 @@ import {cn} from "tailwind-variants";
 import textField from "@/components/admin/TextField";
 import {button} from "@/components/admin/Button";
 import useAsync from "@/hooks/useAsync";
-import {deleteTeam, getClasses, getEvents, getSchools, getTeamById, updateTeam} from "@/libs/API";
+import {
+	deleteTeam,
+	getAccountsByTeamId,
+	getClasses,
+	getEvents,
+	getSchools,
+	getTeamById,
+	updateTeam
+} from "@/libs/API";
+import type { AccountModel } from "@/models/AccountModel";
 import AsyncDataRenderer from "@/components/DataComponent";
 import {useRouter} from "next/navigation";
 import Link from "next/link";
@@ -19,11 +28,12 @@ interface EditFormProps {
 	classes: ClassModel[];
 	schools: SchoolModel[];
 	events: EventModel[];
+	teamAccounts: AccountModel[];
 	onUpdated: (team: TeamModel) => void;
 	onDeleted: () => void;
 }
 
-function EditForm({team, classes, schools, events, onUpdated, onDeleted}: EditFormProps) {
+function EditForm({team, classes, schools, events, teamAccounts, onUpdated, onDeleted}: EditFormProps) {
 	const [name, setName] = useState(team.name);
 	const [classId, setClassId] = useState<number>(team.classId);
 	const [saving, setSaving] = useState(false);
@@ -157,6 +167,75 @@ function EditForm({team, classes, schools, events, onUpdated, onDeleted}: EditFo
 					</div>
 				)}
 
+				{/* Linked Accounts: Team Leader & Shared Team Account */}
+				<div className={"flex flex-col gap-3 pt-2"}>
+					<label className={"text-sm font-semibold text-gray-600 uppercase flex items-center gap-2"}>
+						<span>👥</span>
+						<span>Tilknyttede Konti ({teamAccounts.length})</span>
+					</label>
+
+					{teamAccounts.length === 0 ? (
+						<p className={"text-xs text-gray-400 italic"}>Ingen konti tilknyttet dette hold endnu.</p>
+					) : (
+						<div className={"grid grid-cols-1 sm:grid-cols-2 gap-3"}>
+							{teamAccounts.map((acc) => {
+								const isLeader = acc.role === "TEAM_LEADER";
+								return (
+									<div
+										key={acc.id}
+										className={cn(
+											"p-4 rounded-xl border flex flex-col justify-between gap-3 text-sm",
+											isLeader ? "bg-blue-50/50 border-blue-200" : "bg-emerald-50/50 border-emerald-200"
+										)}
+									>
+										<div className={"flex flex-col gap-1"}>
+											<div className={"flex items-center justify-between"}>
+												<span
+													className={cn(
+														"px-2 py-0.5 rounded-full text-[11px] font-semibold border",
+														isLeader
+															? "bg-blue-100 text-blue-800 border-blue-200"
+															: "bg-emerald-100 text-emerald-800 border-emerald-200"
+													)}
+												>
+													{isLeader ? "Holdleder" : "Fælles Holdkonto"}
+												</span>
+												<Link
+													href={`/admin/accounts/${acc.id}`}
+													className={"text-xs font-semibold text-blue-600 hover:underline"}
+												>
+													Rediger →
+												</Link>
+											</div>
+
+											<div className={"mt-2 flex flex-col gap-1"}>
+												<div className={"flex items-center justify-between"}>
+													<span className={"text-xs text-gray-500 font-medium"}>Brugernavn:</span>
+													<strong className={"font-mono text-xs text-gray-800"}>{acc.username}</strong>
+												</div>
+												<div className={"flex items-center justify-between"}>
+													<span className={"text-xs text-gray-500 font-medium"}>
+														{isLeader ? "Adgangskode:" : "Kode / PIN:"}
+													</span>
+													<span className={"font-mono text-xs bg-white px-2 py-0.5 rounded border border-gray-200 font-semibold text-gray-800"}>
+														{acc.password}
+													</span>
+												</div>
+											</div>
+										</div>
+
+										<p className={"text-[11px] text-gray-500"}>
+											{isLeader
+												? "Konto til holdlederen/læreren for holdet."
+												: "Delt adgangskode/PIN til holdmedlemmer ved posterne."}
+										</p>
+									</div>
+								);
+							})}
+						</div>
+					)}
+				</div>
+
 				{saveError && <p className={"text-red-500 text-sm"}>{saveError}</p>}
 				{saved && <p className={"text-green-600 text-sm"}>Ændringerne er gemt!</p>}
 
@@ -198,6 +277,7 @@ export default function TeamDetailPage({params}: { params: Promise<{ id: string 
 	const {data: classes} = useAsync<ClassModel[]>(async () => getClasses(), []);
 	const {data: schools} = useAsync<SchoolModel[]>(async () => getSchools(), []);
 	const {data: events} = useAsync<EventModel[]>(async () => getEvents(), []);
+	const {data: teamAccounts} = useAsync<AccountModel[]>(() => getAccountsByTeamId(teamId), [teamId]);
 
 	function handleUpdated(updated: TeamModel) {
 		setData(updated);
@@ -241,6 +321,7 @@ export default function TeamDetailPage({params}: { params: Promise<{ id: string 
 								classes={classes ?? []}
 								schools={schools ?? []}
 								events={events ?? []}
+								teamAccounts={teamAccounts ?? []}
 								onUpdated={handleUpdated}
 								onDeleted={handleDeleted}
 							/>

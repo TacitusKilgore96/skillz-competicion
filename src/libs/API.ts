@@ -1,4 +1,5 @@
 import db from "@/db.local.json";
+import type { AccountModel, AccountRole } from "@/models/AccountModel";
 
 // In-memory store that starts from the JSON file (simulates a backend)
 let eventsStore: EventModel[] = (db.events ?? []) as EventModel[];
@@ -6,6 +7,26 @@ let schoolsStore: SchoolModel[] = (db.schools ?? []) as SchoolModel[];
 let classesStore: ClassModel[] = (db.classes ?? []) as ClassModel[];
 let teamsStore: TeamModel[] = (db.teams ?? []) as TeamModel[];
 let stationsStore: StationModel[] = (db.stations ?? []) as StationModel[];
+let accountsStore: AccountModel[] = (db.accounts ?? []) as AccountModel[];
+
+// Helper to generate random readable password/codes
+export function generateRandomPassword(length = 8, numbersOnly = false): string {
+	if (numbersOnly) {
+		return Math.floor(1000 + Math.random() * 9000).toString();
+	}
+	const chars = "abcdefghjkmnpqrstuvwxyz23456789";
+	let res = "";
+	for (let i = 0; i < length; i++) {
+		res += chars.charAt(Math.floor(Math.random() * chars.length));
+	}
+	return res;
+}
+
+export function generateRandomUsername(prefix: string, name?: string): string {
+	const cleanName = name ? name.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8) : "";
+	const rand = Math.floor(100 + Math.random() * 900);
+	return cleanName ? `${prefix}_${cleanName}_${rand}` : `${prefix}_${rand}`;
+}
 
 // ── Events API ───────────────────────────────────────────────────────────────
 
@@ -120,6 +141,32 @@ export async function createTeam(data: Omit<TeamModel, "id">): Promise<TeamModel
 	const newId = teamsStore.length > 0 ? Math.max(...teamsStore.map(t => t.id)) + 1 : 1;
 	const newTeam: TeamModel = { id: newId, ...data };
 	teamsStore = [...teamsStore, newTeam];
+
+	// Automatically create Team Leader account
+	const nextAccId1 = accountsStore.length > 0 ? Math.max(...accountsStore.map(a => a.id)) + 1 : 1;
+	const teamLeaderAcc: AccountModel = {
+		id: nextAccId1,
+		role: "TEAM_LEADER",
+		teamId: newId,
+		username: generateRandomUsername("leder", newTeam.name),
+		password: `tl-${generateRandomPassword(6)}`,
+		name: `Holdleder - ${newTeam.name}`,
+		createdAt: new Date().toISOString().split("T")[0],
+	};
+
+	// Automatically create Shared Team account
+	const nextAccId2 = nextAccId1 + 1;
+	const sharedTeamAcc: AccountModel = {
+		id: nextAccId2,
+		role: "SHARED_TEAM",
+		teamId: newId,
+		username: generateRandomUsername("hold", newTeam.name),
+		password: generateRandomPassword(4, true),
+		name: `Holdkonto - ${newTeam.name}`,
+		createdAt: new Date().toISOString().split("T")[0],
+	};
+
+	accountsStore = [...accountsStore, teamLeaderAcc, sharedTeamAcc];
 	return newTeam;
 }
 
@@ -134,6 +181,7 @@ export async function updateTeam(id: number, data: Partial<Omit<TeamModel, "id">
 export async function deleteTeam(id: number): Promise<void> {
 	await new Promise((resolve) => setTimeout(resolve, 300));
 	teamsStore = teamsStore.filter(t => t.id !== id);
+	accountsStore = accountsStore.filter(a => a.teamId !== id);
 }
 
 // ── Stations API ─────────────────────────────────────────────────────────────
@@ -153,6 +201,20 @@ export async function createStation(data: Omit<StationModel, "id">): Promise<Sta
 	const newId = stationsStore.length > 0 ? Math.max(...stationsStore.map(s => s.id)) + 1 : 1;
 	const newStation: StationModel = { id: newId, ...data, entries: data.entries ?? [] };
 	stationsStore = [...stationsStore, newStation];
+
+	// Automatically create Station Guard account
+	const nextAccId = accountsStore.length > 0 ? Math.max(...accountsStore.map(a => a.id)) + 1 : 1;
+	const stationGuardAcc: AccountModel = {
+		id: nextAccId,
+		role: "STATION_GUARD",
+		stationId: newId,
+		username: generateRandomUsername("vagt", newStation.name),
+		password: `vagt-${generateRandomPassword(6)}`,
+		name: `Vagt - ${newStation.name}`,
+		createdAt: new Date().toISOString().split("T")[0],
+	};
+	accountsStore = [...accountsStore, stationGuardAcc];
+
 	return newStation;
 }
 
@@ -167,6 +229,7 @@ export async function updateStation(id: number, data: Partial<Omit<StationModel,
 export async function deleteStation(id: number): Promise<void> {
 	await new Promise((resolve) => setTimeout(resolve, 300));
 	stationsStore = stationsStore.filter(s => s.id !== id);
+	accountsStore = accountsStore.filter(a => a.stationId !== id);
 }
 
 export async function updateStationEntry(stationId: number, teamId: number, time: string): Promise<StationModel> {
@@ -188,4 +251,77 @@ export async function updateStationEntry(stationId: number, teamId: number, time
 	const updated = stationsStore.find(s => s.id === stationId);
 	if (!updated) throw new Error("Station not found");
 	return updated;
+}
+
+// ── Accounts API ─────────────────────────────────────────────────────────────
+
+export async function getAccounts(): Promise<AccountModel[]> {
+	await new Promise((resolve) => setTimeout(resolve, 300));
+	return [...accountsStore];
+}
+
+export async function getAccountById(id: number): Promise<AccountModel | undefined> {
+	await new Promise((resolve) => setTimeout(resolve, 150));
+	return accountsStore.find((a) => a.id === id);
+}
+
+export async function getAccountsByRole(role: AccountRole): Promise<AccountModel[]> {
+	await new Promise((resolve) => setTimeout(resolve, 200));
+	return accountsStore.filter((a) => a.role === role);
+}
+
+export async function getAccountsByStationId(stationId: number): Promise<AccountModel[]> {
+	await new Promise((resolve) => setTimeout(resolve, 150));
+	return accountsStore.filter((a) => a.stationId === stationId);
+}
+
+export async function getAccountsByTeamId(teamId: number): Promise<AccountModel[]> {
+	await new Promise((resolve) => setTimeout(resolve, 150));
+	return accountsStore.filter((a) => a.teamId === teamId);
+}
+
+export async function createAccount(data: Omit<AccountModel, "id">): Promise<AccountModel> {
+	await new Promise((resolve) => setTimeout(resolve, 300));
+	const newId = accountsStore.length > 0 ? Math.max(...accountsStore.map(a => a.id)) + 1 : 1;
+	const newAccount: AccountModel = {
+		id: newId,
+		...data,
+		createdAt: data.createdAt ?? new Date().toISOString().split("T")[0],
+	};
+	accountsStore = [...accountsStore, newAccount];
+	return newAccount;
+}
+
+export async function updateAccount(id: number, data: Partial<Omit<AccountModel, "id">>): Promise<AccountModel> {
+	await new Promise((resolve) => setTimeout(resolve, 300));
+	accountsStore = accountsStore.map(a => a.id === id ? { ...a, ...data } : a);
+	const updated = accountsStore.find(a => a.id === id);
+	if (!updated) throw new Error("Account not found");
+	return updated;
+}
+
+export async function deleteAccount(id: number): Promise<void> {
+	await new Promise((resolve) => setTimeout(resolve, 300));
+	accountsStore = accountsStore.filter(a => a.id !== id);
+}
+
+export async function resetAccountPassword(id: number): Promise<{ account: AccountModel; newPassword: string }> {
+	await new Promise((resolve) => setTimeout(resolve, 250));
+	const account = accountsStore.find(a => a.id === id);
+	if (!account) throw new Error("Account not found");
+
+	let newPassword = "";
+	if (account.role === "SHARED_TEAM") {
+		newPassword = generateRandomPassword(4, true);
+	} else if (account.role === "STATION_GUARD") {
+		newPassword = `vagt-${generateRandomPassword(6)}`;
+	} else if (account.role === "TEAM_LEADER") {
+		newPassword = `tl-${generateRandomPassword(6)}`;
+	} else {
+		newPassword = generateRandomPassword(10);
+	}
+
+	accountsStore = accountsStore.map(a => a.id === id ? { ...a, password: newPassword } : a);
+	const updated = accountsStore.find(a => a.id === id)!;
+	return { account: updated, newPassword };
 }

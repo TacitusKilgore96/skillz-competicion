@@ -143,5 +143,119 @@
       "eventId": 2,
       "entries": []
     }
+  ],
+  "accounts": [
+    {
+      "id": 1,
+      "role": "ORGANIZER",
+      "username": "admin",
+      "password": "adminpassword123",
+      "name": "Hovedarrangør",
+      "email": "admin@skillscompetition.dk"
+    },
+    {
+      "id": 2,
+      "role": "ORGANIZER",
+      "username": "oliver",
+      "password": "skills2026pass",
+      "name": "Oliver Arrangør",
+      "email": "oliver@skillscompetition.dk"
+    },
+    {
+      "id": 3,
+      "role": "STATION_GUARD",
+      "stationId": 1,
+      "username": "vagt_station1",
+      "password": "vagt-pm-7821",
+      "name": "Vagt - Præcision og Måling"
+    },
+    {
+      "id": 4,
+      "role": "STATION_GUARD",
+      "stationId": 2,
+      "username": "vagt_station2",
+      "password": "vagt-ss-3942",
+      "name": "Vagt - Svejsning & Samling"
+    },
+    {
+      "id": 5,
+      "role": "STATION_GUARD",
+      "stationId": 3,
+      "username": "vagt_station3",
+      "password": "vagt-el-8819",
+      "name": "Vagt - El-kredsløb & Fejlfinding"
+    },
+    {
+      "id": 6,
+      "role": "STATION_GUARD",
+      "stationId": 4,
+      "username": "vagt_station4",
+      "password": "vagt-tt-6234",
+      "name": "Vagt - Tømrer & Trækonstruktion"
+    },
+    {
+      "id": 7,
+      "role": "TEAM_LEADER",
+      "teamId": 1,
+      "username": "leder_smede",
+      "password": "tl-smede-491",
+      "name": "Holdleder - De Hurtige Smede"
+    },
+    {
+      "id": 8,
+      "role": "TEAM_LEADER",
+      "teamId": 2,
+      "username": "leder_murer",
+      "password": "tl-murer-823",
+      "name": "Holdleder - Murer Mestrene"
+    },
+    {
+      "id": 9,
+      "role": "TEAM_LEADER",
+      "teamId": 3,
+      "username": "leder_elektro",
+      "password": "tl-elektro-115",
+      "name": "Holdleder - Elektrikerne"
+    },
+    {
+      "id": 10,
+      "role": "TEAM_LEADER",
+      "teamId": 4,
+      "username": "leder_turbo",
+      "password": "tl-turbo-902",
+      "name": "Holdleder - Team Turbo"
+    },
+    {
+      "id": 11,
+      "role": "SHARED_TEAM",
+      "teamId": 1,
+      "username": "hold_smede",
+      "password": "5482",
+      "name": "Holdkonto - De Hurtige Smede"
+    },
+    {
+      "id": 12,
+      "role": "SHARED_TEAM",
+      "teamId": 2,
+      "username": "hold_murer",
+      "password": "9124",
+      "name": "Holdkonto - Murer Mestrene"
+    },
+    {
+      "id": 13,
+      "role": "SHARED_TEAM",
+      "teamId": 3,
+      "username": "hold_elektro",
+      "password": "3048",
+      "name": "Holdkonto - Elektrikerne"
+    },
+    {
+      "id": 14,
+      "role": "SHARED_TEAM",
+      "teamId": 4,
+      "username": "hold_turbo",
+      "password": "7619",
+      "name": "Holdkonto - Team Turbo"
+    }
   ]
 }
