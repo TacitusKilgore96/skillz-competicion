@@ -39,7 +39,7 @@ import {
 	getTeams,
 	getStations,
 } from "@/libs/API";
-import { getCurrentUser, logoutUser, AuthUser } from "@/libs/auth";
+import { getCurrentUser, getCachedUser, logoutUser, AuthUser } from "@/libs/auth";
 
 export default function EventsAdminPage() {
 	const router = useRouter();
@@ -50,8 +50,9 @@ export default function EventsAdminPage() {
 	const [teams, setTeams] = useState<TeamModel[]>([]);
 	const [stations, setStations] = useState<StationModel[]>([]);
 	const [loading, setLoading] = useState(true);
-	const [user, setUser] = useState<AuthUser | null>(null);
-	const [authChecking, setAuthChecking] = useState(true);
+	const cached = getCachedUser();
+	const [user, setUser] = useState<AuthUser | null>(cached ?? null);
+	const [authChecking, setAuthChecking] = useState<boolean>(cached === undefined);
 
 	const [searchQuery, setSearchQuery] = useState("");
 
@@ -234,7 +235,7 @@ export default function EventsAdminPage() {
 		return (
 			<div className="h-screen w-screen bg-slate-900 flex flex-col items-center justify-center text-white gap-3">
 				<IconLoader2 size={32} className="animate-spin text-slate-400" />
-				<p className="text-xs text-slate-400 font-medium">Verificerer arrangør adgang...</p>
+				<p className="text-xs text-slate-400 font-medium">Indlæser...</p>
 			</div>
 		);
 	}

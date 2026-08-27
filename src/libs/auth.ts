@@ -8,6 +8,13 @@ export interface AuthUser {
 	stationId?: number;
 }
 
+let cachedAuthUser: AuthUser | null | undefined = undefined;
+let inFlightAuthPromise: Promise<AuthUser | null> | null = null;
+
+export function getCachedUser(): AuthUser | null | undefined {
+	return cachedAuthUser;
+}
+
 export async function loginUser(
 	username: string,
 	password: string
@@ -21,23 +28,47 @@ export async function loginUser(
 	if (!res.ok || !json.success) {
 		throw new Error(json.error || "Ugyldigt brugernavn eller adgangskode");
 	}
-	return json.user as AuthUser;
+	cachedAuthUser = json.user as AuthUser;
+	return cachedAuthUser;
 }
 
 export async function logoutUser(): Promise<void> {
+	cachedAuthUser = null;
 	await fetch("/api/auth/logout", {
 		method: "POST",
 	});
 }
 
-export async function getCurrentUser(): Promise<AuthUser | null> {
-	try {
-		const res = await fetch("/api/auth/me", { cache: "no-store" });
-		if (!res.ok) return null;
-		const json = await res.json();
-		if (!json.success || !json.user) return null;
-		return json.user as AuthUser;
-	} catch {
-		return null;
+export async function getCurrentUser(forceRefresh = false): Promise<AuthUser | null> {
+	if (!forceRefresh && cachedAuthUser !== undefined) {
+		return cachedAuthUser;
 	}
+
+	if (inFlightAuthPromise) {
+		return inFlightAuthPromise;
+	}
+
+	inFlightAuthPromise = (async () => {
+		try {
+			const res = await fetch("/api/auth/me", { cache: "no-store" });
+			if (!res.ok) {
+				cachedAuthUser = null;
+				return null;
+			}
+			const json = await res.json();
+			if (!json.success || !json.user) {
+				cachedAuthUser = null;
+				return null;
+			}
+			cachedAuthUser = json.user as AuthUser;
+			return cachedAuthUser;
+		} catch {
+			cachedAuthUser = null;
+			return null;
+		} finally {
+			inFlightAuthPromise = null;
+		}
+	})();
+
+	return inFlightAuthPromise;
 }

@@ -18,7 +18,7 @@ import {
 	IconUser,
 	IconLoader2,
 } from "@tabler/icons-react";
-import { getCurrentUser, logoutUser, AuthUser } from "@/libs/auth";
+import { getCurrentUser, getCachedUser, logoutUser, AuthUser } from "@/libs/auth";
 
 interface ShellProps {
 	pageTitle: string;
@@ -28,8 +28,9 @@ interface ShellProps {
 export function EventShell({ pageTitle, children }: ShellProps) {
 	const router = useRouter();
 	const [now, setNow] = useState<Date>(() => new Date());
-	const [user, setUser] = useState<AuthUser | null>(null);
-	const [authChecking, setAuthChecking] = useState(true);
+	const cached = getCachedUser();
+	const [user, setUser] = useState<AuthUser | null>(cached ?? null);
+	const [authChecking, setAuthChecking] = useState<boolean>(cached === undefined);
 
 	useEffect(() => {
 		const timer = setInterval(() => setNow(new Date()), 30000);
@@ -70,7 +71,7 @@ export function EventShell({ pageTitle, children }: ShellProps) {
 		return (
 			<div className="h-screen w-screen bg-slate-900 flex flex-col items-center justify-center text-white gap-3">
 				<IconLoader2 size={32} className="animate-spin text-slate-400" />
-				<p className="text-xs text-slate-400 font-medium">Verificerer adgang...</p>
+				<p className="text-xs text-slate-400 font-medium">Indlæser...</p>
 			</div>
 		);
 	}
