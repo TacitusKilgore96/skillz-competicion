@@ -124,25 +124,25 @@ export default function AccountManagement({
 		return accounts.find((a) => a.id === selectedId) || null;
 	}, [accounts, selectedId]);
 
-	// Filter accounts
+	// Filtered accounts list
 	const filteredAccounts = useMemo(() => {
 		return accounts.filter((account) => {
 			const matchesType =
-				typeFilter === "ALL" || account.type === typeFilter;
-			const q = searchQuery.toLowerCase().trim();
-			const matchesSearch =
-				q === "" ||
-				account.username.toLowerCase().includes(q) ||
-				(account.type && account.type.toLowerCase().includes(q));
-			return matchesType && matchesSearch;
+				typeFilter === "ALL" ? true : account.type === typeFilter;
+			const matchesQuery =
+				searchQuery.trim() === "" ||
+				account.username
+					.toLowerCase()
+					.includes(searchQuery.toLowerCase().trim());
+			return matchesType && matchesQuery;
 		});
 	}, [accounts, typeFilter, searchQuery]);
 
 	const handleSelectAccount = (account: AccountModel) => {
 		setSelectedId(account.id);
 		setViewMode("VIEW");
-		setShowPassword(false);
 		setFormError(null);
+		setShowPassword(false);
 		startTransition(() => {
 			router.push(`/admin/${activeEventId}/accounts/${account.id}`);
 		});
@@ -255,35 +255,35 @@ export default function AccountManagement({
 			{toast && (
 				<div
 					className={cn(
-						"absolute top-4 right-4 z-50 px-4 py-2.5 rounded-2xl shadow-lg border text-sm font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200",
+						"absolute top-4 right-4 z-50 px-3.5 py-2 rounded-lg border text-sm font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-150",
 						toast.type === "success"
-							? "bg-emerald-50 text-emerald-900 border-emerald-300"
-							: "bg-red-50 text-red-900 border-red-300"
+							? "bg-slate-900 text-white border-slate-800"
+							: "bg-red-50 text-red-900 border-red-200"
 					)}
 				>
 					{toast.type === "success" ? (
-						<IconCheck size={18} className="text-emerald-600 shrink-0" />
+						<IconCheck size={16} className="text-emerald-400 shrink-0" />
 					) : (
-						<IconAlertTriangle size={18} className="text-red-600 shrink-0" />
+						<IconAlertTriangle size={16} className="text-red-600 shrink-0" />
 					)}
 					<span>{toast.message}</span>
 				</div>
 			)}
 
 			{/* Left Column: Accounts Directory */}
-			<aside className="shrink-0 h-full w-96 p-4 border-r border-slate-200 bg-white flex flex-col gap-3">
+			<aside className="shrink-0 h-full w-80 p-3.5 border-r border-slate-200 bg-white flex flex-col gap-2.5">
 				{/* Top search & create bar */}
 				<div className="flex gap-2 items-center">
 					<div className="relative flex-1">
 						<IconSearch
-							size={18}
-							className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+							size={16}
+							className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
 						/>
 						<input
 							type="search"
 							className={cn(
 								textField(),
-								"w-full pl-9 pr-3 py-1.5 text-sm"
+								"w-full pl-8 pr-2.5 py-1.5 text-xs"
 							)}
 							placeholder="Søg i konti..."
 							value={searchQuery}
@@ -295,22 +295,22 @@ export default function AccountManagement({
 						title="Opret ny konto"
 						className={cn(
 							iconButton(),
-							"bg-hover text-white hover:bg-emerald-600 border-transparent shadow-sm"
+							"bg-slate-900 text-white hover:bg-slate-800 border-transparent p-1.5"
 						)}
 					>
-						<IconPlus size={20} />
+						<IconPlus size={18} />
 					</button>
 				</div>
 
 				{/* Filter Tabs */}
-				<div className="flex p-1 bg-slate-100 rounded-xl gap-1 text-xs font-semibold">
+				<div className="flex p-0.5 bg-slate-100 rounded-lg gap-0.5 text-xs font-medium">
 					<button
 						onClick={() => setTypeFilter("ALL")}
 						className={cn(
-							"flex-1 py-1.5 rounded-lg transition-all text-center",
+							"flex-1 py-1 rounded-md transition-colors text-center text-xs",
 							typeFilter === "ALL"
-								? "bg-white text-slate-900 shadow-xs"
-								: "text-slate-500 hover:text-slate-800"
+								? "bg-white text-slate-900 border border-slate-200/60 font-semibold"
+								: "text-slate-600 hover:text-slate-900"
 						)}
 					>
 						Alle ({accounts.length})
@@ -318,10 +318,10 @@ export default function AccountManagement({
 					<button
 						onClick={() => setTypeFilter("ORGANIZER")}
 						className={cn(
-							"flex-1 py-1.5 rounded-lg transition-all text-center",
+							"flex-1 py-1 rounded-md transition-colors text-center text-xs",
 							typeFilter === "ORGANIZER"
-								? "bg-white text-indigo-700 shadow-xs"
-								: "text-slate-500 hover:text-slate-800"
+								? "bg-white text-slate-900 border border-slate-200/60 font-semibold"
+								: "text-slate-600 hover:text-slate-900"
 						)}
 					>
 						Arrangør
@@ -329,10 +329,10 @@ export default function AccountManagement({
 					<button
 						onClick={() => setTypeFilter("POST_GUARD")}
 						className={cn(
-							"flex-1 py-1.5 rounded-lg transition-all text-center",
+							"flex-1 py-1 rounded-md transition-colors text-center text-xs",
 							typeFilter === "POST_GUARD"
-								? "bg-white text-emerald-700 shadow-xs"
-								: "text-slate-500 hover:text-slate-800"
+								? "bg-white text-slate-900 border border-slate-200/60 font-semibold"
+								: "text-slate-600 hover:text-slate-900"
 						)}
 					>
 						Postvagt
@@ -340,10 +340,10 @@ export default function AccountManagement({
 					<button
 						onClick={() => setTypeFilter("TEAM")}
 						className={cn(
-							"flex-1 py-1.5 rounded-lg transition-all text-center",
+							"flex-1 py-1 rounded-md transition-colors text-center text-xs",
 							typeFilter === "TEAM"
-								? "bg-white text-amber-700 shadow-xs"
-								: "text-slate-500 hover:text-slate-800"
+								? "bg-white text-slate-900 border border-slate-200/60 font-semibold"
+								: "text-slate-600 hover:text-slate-900"
 						)}
 					>
 						Hold
@@ -351,28 +351,28 @@ export default function AccountManagement({
 				</div>
 
 				{/* Accounts List */}
-				<div className="flex-1 overflow-y-auto pr-1">
+				<div className="flex-1 overflow-y-auto pr-0.5">
 					{loading ? (
-						<div className="flex flex-col items-center justify-center h-48 text-slate-400 gap-2">
-							<IconLoader2 size={24} className="animate-spin" />
-							<p className="text-sm">Henter konti...</p>
+						<div className="flex flex-col items-center justify-center h-40 text-slate-400 gap-2">
+							<IconLoader2 size={20} className="animate-spin" />
+							<p className="text-xs">Henter konti...</p>
 						</div>
 					) : filteredAccounts.length === 0 ? (
-						<div className="flex flex-col items-center justify-center h-48 text-slate-400 p-4 text-center">
-							<IconKey size={32} className="mb-2 opacity-40" />
-							<p className="text-sm font-medium">Ingen konti fundet</p>
-							<p className="text-xs text-slate-400 mt-1">
-								Prøv at ændre dine søgekriterier eller opret en ny konto.
+						<div className="flex flex-col items-center justify-center h-40 text-slate-400 p-3 text-center">
+							<IconKey size={28} className="mb-1.5 opacity-30" />
+							<p className="text-xs font-medium text-slate-600">Ingen konti fundet</p>
+							<p className="text-[11px] text-slate-400 mt-0.5">
+								Prøv en anden søgning eller opret en ny konto.
 							</p>
 							<button
 								onClick={handleStartCreate}
-								className={cn(button(), "mt-3 text-xs flex items-center gap-1")}
+								className={cn(button(), "mt-2.5 text-xs py-1 px-2.5")}
 							>
 								<IconPlus size={14} /> Opret konto
 							</button>
 						</div>
 					) : (
-						<ul className="flex flex-col gap-2">
+						<ul className="flex flex-col gap-1.5">
 							{filteredAccounts.map((account) => {
 								const isSelected =
 									selectedId === account.id && viewMode !== "CREATE";
@@ -382,54 +382,38 @@ export default function AccountManagement({
 											type="button"
 											onClick={() => handleSelectAccount(account)}
 											className={cn(
-												"w-full text-left p-3 rounded-2xl border-2 transition-all flex items-center justify-between group",
+												"w-full text-left p-2.5 rounded-lg border transition-colors flex items-center justify-between group",
 												isSelected
-													? "bg-slate-800 text-white border-slate-800 shadow-md"
-													: "bg-white border-slate-200 hover:border-slate-400 text-slate-800"
+													? "bg-slate-900 text-white border-slate-900"
+													: "bg-white border-slate-200 hover:border-slate-300 text-slate-800"
 											)}
 										>
-											<div className="flex items-center gap-3 min-w-0">
+											<div className="flex items-center gap-2.5 min-w-0">
 												<div
 													className={cn(
-														"w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold text-sm",
-														account.type === "ORGANIZER"
-															? isSelected
-																? "bg-indigo-500/30 text-indigo-200"
-																: "bg-indigo-50 text-indigo-700"
-															: account.type === "TEAM"
-															? isSelected
-																? "bg-amber-500/30 text-amber-200"
-																: "bg-amber-50 text-amber-700"
-															: isSelected
-															? "bg-emerald-500/30 text-emerald-200"
-															: "bg-emerald-50 text-emerald-700"
+														"w-8 h-8 rounded-md flex items-center justify-center shrink-0 text-xs font-semibold",
+														isSelected
+															? "bg-slate-800 text-slate-200"
+															: "bg-slate-100 text-slate-600"
 													)}
 												>
 													{account.type === "ORGANIZER" ? (
-														<IconShield size={20} />
+														<IconShield size={16} />
 													) : account.type === "TEAM" ? (
-														<IconUsers size={20} />
+														<IconUsers size={16} />
 													) : (
-														<IconFlag size={20} />
+														<IconFlag size={16} />
 													)}
 												</div>
 												<div className="min-w-0">
-													<div className="font-bold text-sm truncate flex items-center gap-2">
-														<span>{account.username}</span>
+													<div className="font-medium text-xs truncate flex items-center gap-1.5">
+														<span className="truncate">{account.username}</span>
 														<span
 															className={cn(
-																"text-[10px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded-md",
-																account.type === "ORGANIZER"
-																	? isSelected
-																		? "bg-indigo-400/20 text-indigo-300"
-																		: "bg-indigo-100 text-indigo-800"
-																	: account.type === "TEAM"
-																	? isSelected
-																		? "bg-amber-400/20 text-amber-300"
-																		: "bg-amber-100 text-amber-800"
-																	: isSelected
-																	? "bg-emerald-400/20 text-emerald-300"
-																	: "bg-emerald-100 text-emerald-800"
+																"text-[10px] px-1 py-0.2 rounded font-normal shrink-0",
+																isSelected
+																	? "bg-slate-800 text-slate-300"
+																	: "bg-slate-100 text-slate-600"
 															)}
 														>
 															{account.type === "ORGANIZER"
@@ -439,33 +423,25 @@ export default function AccountManagement({
 																: "Postvagt"}
 														</span>
 													</div>
-													<div className="flex items-center gap-2 mt-0.5 text-xs opacity-75">
-														<span className="font-mono text-[11px]">
-															ID #{account.id}
+													<div className="flex items-center gap-2 mt-0.5 text-[11px] opacity-60">
+														<span className="font-mono">
+															#{account.id}
 														</span>
 														{account.teamId && (
-															<span className="text-[10px] text-amber-600 font-semibold truncate">
+															<span className="text-amber-600 font-medium truncate">
 																Hold #{account.teamId}
 															</span>
 														)}
 														{account.stationId && (
-															<span className="text-[10px] text-emerald-600 font-semibold truncate">
+															<span className="text-emerald-600 font-medium truncate">
 																Station #{account.stationId}
 															</span>
 														)}
-														<span
-															className={cn(
-																"text-[10px] tracking-widest font-mono",
-																isSelected ? "text-slate-300" : "text-slate-400"
-															)}
-														>
-															••••••••
-														</span>
 													</div>
 												</div>
 											</div>
 
-											<div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+											<div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
 												<span
 													role="button"
 													title="Rediger"
@@ -474,13 +450,13 @@ export default function AccountManagement({
 														handleStartEdit(account);
 													}}
 													className={cn(
-														"p-1.5 rounded-lg transition-colors cursor-pointer",
+														"p-1 rounded transition-colors cursor-pointer",
 														isSelected
-															? "hover:bg-white/20 text-white"
-															: "hover:bg-slate-100 text-slate-500"
+															? "hover:bg-slate-800 text-slate-300"
+															: "hover:bg-slate-100 text-slate-400 hover:text-slate-700"
 													)}
 												>
-													<IconEdit size={16} />
+													<IconEdit size={14} />
 												</span>
 												<span
 													role="button"
@@ -490,13 +466,13 @@ export default function AccountManagement({
 														setAccountToDelete(account);
 													}}
 													className={cn(
-														"p-1.5 rounded-lg transition-colors cursor-pointer",
+														"p-1 rounded transition-colors cursor-pointer",
 														isSelected
-															? "hover:bg-red-500/40 text-red-200"
-															: "hover:bg-red-50 text-red-500"
+															? "hover:bg-red-900/60 text-red-300"
+															: "hover:bg-red-50 text-slate-400 hover:text-red-600"
 													)}
 												>
-													<IconTrash size={16} />
+													<IconTrash size={14} />
 												</span>
 											</div>
 										</button>
@@ -509,17 +485,17 @@ export default function AccountManagement({
 			</aside>
 
 			{/* Right Column: Work Area */}
-			<div className="flex-1 h-full overflow-y-auto p-8">
+			<div className="flex-1 h-full overflow-y-auto p-6">
 				{viewMode === "CREATE" ? (
 					/* Create Account Form */
-					<div className="max-w-2xl mx-auto">
-						<div className={cn(card(), "bg-white p-8 shadow-sm")}>
-							<div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+					<div className="max-w-xl mx-auto">
+						<div className={cn(card(), "p-6")}>
+							<div className="flex items-center justify-between mb-5 pb-3 border-b border-slate-100">
 								<div>
-									<h2 className="text-2xl font-bold text-slate-800">
+									<h2 className="text-lg font-bold text-slate-900">
 										Opret ny brugerkonto
 									</h2>
-									<p className="text-sm text-slate-500 mt-1">
+									<p className="text-xs text-slate-500 mt-0.5">
 										Opret en arrangør-, postvagt- eller hold-konto med adgang til systemet.
 									</p>
 								</div>
@@ -527,42 +503,42 @@ export default function AccountManagement({
 									onClick={handleCancelForm}
 									className={cn(
 										iconButton(),
-										"text-slate-400 hover:text-slate-600"
+										"text-slate-400 hover:text-slate-600 p-1"
 									)}
 								>
-									<IconX size={20} />
+									<IconX size={18} />
 								</button>
 							</div>
 
 							{formError && (
-								<div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-center gap-2">
-									<IconAlertTriangle size={18} className="shrink-0" />
+								<div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
+									<IconAlertTriangle size={16} className="shrink-0" />
 									<span>{formError}</span>
 								</div>
 							)}
 
-							<form onSubmit={handleSaveForm} className="space-y-6">
+							<form onSubmit={handleSaveForm} className="space-y-4">
 								{/* Role Selection */}
 								<div>
-									<label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">
+									<label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
 										Vælg Kontotype
 									</label>
-									<div className="grid grid-cols-2 gap-4">
+									<div className="grid grid-cols-2 gap-3">
 										{/* POST_GUARD Option */}
 										<label
 											className={cn(
-												"flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition-all",
+												"flex flex-col p-3 rounded-lg border cursor-pointer transition-colors",
 												formType === "POST_GUARD"
-													? "border-emerald-500 bg-emerald-50/50 shadow-sm"
-													: "border-slate-200 bg-slate-50/50 hover:border-slate-300"
+													? "border-slate-900 bg-slate-50 font-medium"
+													: "border-slate-200 bg-white hover:border-slate-300"
 											)}
 										>
-											<div className="flex items-center justify-between mb-2">
+											<div className="flex items-center justify-between mb-1">
 												<div className="flex items-center gap-2">
-													<div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center">
-														<IconFlag size={18} />
+													<div className="w-6 h-6 rounded bg-slate-100 text-slate-700 flex items-center justify-center">
+														<IconFlag size={14} />
 													</div>
-													<span className="font-bold text-slate-800">
+													<span className="font-semibold text-xs text-slate-800">
 														Postvagt
 													</span>
 												</div>
@@ -572,29 +548,29 @@ export default function AccountManagement({
 													value="POST_GUARD"
 													checked={formType === "POST_GUARD"}
 													onChange={() => setFormType("POST_GUARD")}
-													className="accent-emerald-600 w-4 h-4"
+													className="accent-slate-900 w-3.5 h-3.5"
 												/>
 											</div>
-											<p className="text-xs text-slate-500 mt-1">
-												Adgang til post-/stationssiden for at registrere tider og point for deltagende hold.
+											<p className="text-[11px] text-slate-500">
+												Adgang til post-/stationssiden for at registrere tider for hold.
 											</p>
 										</label>
 
 										{/* ORGANIZER Option */}
 										<label
 											className={cn(
-												"flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition-all",
+												"flex flex-col p-3 rounded-lg border cursor-pointer transition-colors",
 												formType === "ORGANIZER"
-													? "border-indigo-500 bg-indigo-50/50 shadow-sm"
-													: "border-slate-200 bg-slate-50/50 hover:border-slate-300"
+													? "border-slate-900 bg-slate-50 font-medium"
+													: "border-slate-200 bg-white hover:border-slate-300"
 											)}
 										>
-											<div className="flex items-center justify-between mb-2">
+											<div className="flex items-center justify-between mb-1">
 												<div className="flex items-center gap-2">
-													<div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-800 flex items-center justify-center">
-														<IconShield size={18} />
+													<div className="w-6 h-6 rounded bg-slate-100 text-slate-700 flex items-center justify-center">
+														<IconShield size={14} />
 													</div>
-													<span className="font-bold text-slate-800">
+													<span className="font-semibold text-xs text-slate-800">
 														Arrangør
 													</span>
 												</div>
@@ -604,78 +580,62 @@ export default function AccountManagement({
 													value="ORGANIZER"
 													checked={formType === "ORGANIZER"}
 													onChange={() => setFormType("ORGANIZER")}
-													className="accent-indigo-600 w-4 h-4"
+													className="accent-slate-900 w-3.5 h-3.5"
 												/>
 											</div>
-											<p className="text-xs text-slate-500 mt-1">
-												Fuld administratoradgang til Kontrol Centeret, klasser, hold og alle konti.
+											<p className="text-[11px] text-slate-500">
+												Fuld adgang til kontrolcentret, klasser, hold og konfiguration.
 											</p>
 										</label>
 									</div>
 								</div>
 
-								{/* Username Field */}
+								{/* Username */}
 								<div>
 									<label
-										htmlFor="new-username"
-										className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2"
+										htmlFor="form-username"
+										className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5"
 									>
 										Brugernavn *
 									</label>
 									<input
-										id="new-username"
+										id="form-username"
 										type="text"
 										required
-										className={cn(textField(), "w-full py-2.5 px-4 text-sm")}
-										placeholder="f.eks. post_trae_01"
+										className={cn(textField(), "w-full py-2 px-3 text-sm")}
+										placeholder="f.eks. postvagt_post1 eller arrangor_peter"
 										value={formUsername}
 										onChange={(e) => setFormUsername(e.target.value)}
 									/>
 								</div>
 
-								{/* Password Field */}
+								{/* Password */}
 								<div>
 									<label
-										htmlFor="new-password"
-										className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2"
+										htmlFor="form-password"
+										className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5"
 									>
 										Adgangskode *
 									</label>
-									<div className="relative flex items-center">
-										<input
-											id="new-password"
-											type={showPassword ? "text" : "password"}
-											required
-											className={cn(
-												textField(),
-												"w-full py-2.5 pl-4 pr-12 text-sm"
-											)}
-											placeholder="Indtast adgangskode"
-											value={formPassword}
-											onChange={(e) => setFormPassword(e.target.value)}
-										/>
-										<button
-											type="button"
-											onClick={() => setShowPassword(!showPassword)}
-											className="absolute right-3 p-1.5 text-slate-400 hover:text-slate-600 transition-colors"
-										>
-											{showPassword ? (
-												<IconEyeOff size={18} />
-											) : (
-												<IconEye size={18} />
-											)}
-										</button>
-									</div>
+									<input
+										id="form-password"
+										type="text"
+										required
+										className={cn(textField(), "w-full py-2 px-3 text-sm font-mono")}
+										placeholder="Indtast adgangskode"
+										value={formPassword}
+										onChange={(e) => setFormPassword(e.target.value)}
+									/>
 								</div>
 
-								{/* Action Buttons */}
-								<div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+								{/* Actions */}
+								<div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
 									<button
 										type="button"
 										onClick={handleCancelForm}
 										className={cn(
 											button(),
-											"px-5 py-2 text-sm text-slate-600 hover:text-slate-900 border-slate-200"
+											"px-4 py-1.5 text-xs text-slate-600 hover:text-slate-900 border-slate-200"
 										)}
 									>
 										Annuller
@@ -685,10 +645,12 @@ export default function AccountManagement({
 										disabled={isSubmitting}
 										className={cn(
 											button(),
-											"px-6 py-2 text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 border-transparent shadow-sm flex items-center gap-2"
+											"px-5 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 border-transparent flex items-center gap-1.5"
 										)}
 									>
-										{isSubmitting && <IconLoader2 size={16} className="animate-spin" />}
+										{isSubmitting && (
+											<IconLoader2 size={14} className="animate-spin" />
+										)}
 										<span>Opret Konto</span>
 									</button>
 								</div>
@@ -697,111 +659,111 @@ export default function AccountManagement({
 					</div>
 				) : viewMode === "EDIT" && selectedAccount ? (
 					/* Edit Account Form */
-					<div className="max-w-2xl mx-auto">
-						<div className={cn(card(), "bg-white p-8 shadow-sm")}>
-							<div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+					<div className="max-w-xl mx-auto">
+						<div className={cn(card(), "p-6")}>
+							<div className="flex items-center justify-between mb-5 pb-3 border-b border-slate-100">
 								<div>
-									<h2 className="text-2xl font-bold text-slate-800">
-										Rediger konto
+									<h2 className="text-lg font-bold text-slate-900">
+										Rediger brugerkonto
 									</h2>
-									<p className="text-sm text-slate-500 mt-1">
-										Opdater oplysninger for bruger #{selectedAccount.id} ({selectedAccount.username}).
+									<p className="text-xs text-slate-500 mt-0.5">
+										Opdater legitimationsoplysninger for {selectedAccount.username}.
 									</p>
 								</div>
 								<button
 									onClick={handleCancelForm}
 									className={cn(
 										iconButton(),
-										"text-slate-400 hover:text-slate-600"
+										"text-slate-400 hover:text-slate-600 p-1"
 									)}
 								>
-									<IconX size={20} />
+									<IconX size={18} />
 								</button>
 							</div>
 
 							{formError && (
-								<div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-center gap-2">
-									<IconAlertTriangle size={18} className="shrink-0" />
+								<div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
+									<IconAlertTriangle size={16} className="shrink-0" />
 									<span>{formError}</span>
 								</div>
 							)}
 
-							<form onSubmit={handleSaveForm} className="space-y-6">
+							<form onSubmit={handleSaveForm} className="space-y-4">
 								{/* Role Selection */}
 								<div>
-									<label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">
+									<label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
 										Kontotype
 									</label>
-									<div className="grid grid-cols-2 gap-4">
+									<div className="grid grid-cols-2 gap-3">
 										<label
 											className={cn(
-												"flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition-all",
+												"flex flex-col p-3 rounded-lg border cursor-pointer transition-colors",
 												formType === "POST_GUARD"
-													? "border-emerald-500 bg-emerald-50/50 shadow-sm"
-													: "border-slate-200 bg-slate-50/50 hover:border-slate-300"
+													? "border-slate-900 bg-slate-50 font-medium"
+													: "border-slate-200 bg-white hover:border-slate-300"
 											)}
 										>
-											<div className="flex items-center justify-between mb-2">
+											<div className="flex items-center justify-between mb-1">
 												<div className="flex items-center gap-2">
-													<div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center">
-														<IconFlag size={18} />
+													<div className="w-6 h-6 rounded bg-slate-100 text-slate-700 flex items-center justify-center">
+														<IconFlag size={14} />
 													</div>
-													<span className="font-bold text-slate-800">
+													<span className="font-semibold text-xs text-slate-800">
 														Postvagt
 													</span>
 												</div>
 												<input
 													type="radio"
-													name="accountType"
+													name="editAccountType"
 													value="POST_GUARD"
 													checked={formType === "POST_GUARD"}
 													onChange={() => setFormType("POST_GUARD")}
-													className="accent-emerald-600 w-4 h-4"
+													className="accent-slate-900 w-3.5 h-3.5"
 												/>
 											</div>
-											<p className="text-xs text-slate-500 mt-1">
-												Adgang til postvisningen for denne station.
+											<p className="text-[11px] text-slate-500">
+												Adgang til post-/stationssiden for tidsregistrering.
 											</p>
 										</label>
 
 										<label
 											className={cn(
-												"flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition-all",
+												"flex flex-col p-3 rounded-lg border cursor-pointer transition-colors",
 												formType === "ORGANIZER"
-													? "border-indigo-500 bg-indigo-50/50 shadow-sm"
-													: "border-slate-200 bg-slate-50/50 hover:border-slate-300"
+													? "border-slate-900 bg-slate-50 font-medium"
+													: "border-slate-200 bg-white hover:border-slate-300"
 											)}
 										>
-											<div className="flex items-center justify-between mb-2">
+											<div className="flex items-center justify-between mb-1">
 												<div className="flex items-center gap-2">
-													<div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-800 flex items-center justify-center">
-														<IconShield size={18} />
+													<div className="w-6 h-6 rounded bg-slate-100 text-slate-700 flex items-center justify-center">
+														<IconShield size={14} />
 													</div>
-													<span className="font-bold text-slate-800">
+													<span className="font-semibold text-xs text-slate-800">
 														Arrangør
 													</span>
 												</div>
 												<input
 													type="radio"
-													name="accountType"
+													name="editAccountType"
 													value="ORGANIZER"
 													checked={formType === "ORGANIZER"}
 													onChange={() => setFormType("ORGANIZER")}
-													className="accent-indigo-600 w-4 h-4"
+													className="accent-slate-900 w-3.5 h-3.5"
 												/>
 											</div>
-											<p className="text-xs text-slate-500 mt-1">
-												Fuld kontrol over Kontrol Centeret.
+											<p className="text-[11px] text-slate-500">
+												Fuld adgang til kontrolcenteret.
 											</p>
 										</label>
 									</div>
 								</div>
 
-								{/* Username Field */}
+								{/* Username */}
 								<div>
 									<label
 										htmlFor="edit-username"
-										className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2"
+										className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5"
 									>
 										Brugernavn *
 									</label>
@@ -809,54 +771,38 @@ export default function AccountManagement({
 										id="edit-username"
 										type="text"
 										required
-										className={cn(textField(), "w-full py-2.5 px-4 text-sm")}
+										className={cn(textField(), "w-full py-2 px-3 text-sm")}
 										value={formUsername}
 										onChange={(e) => setFormUsername(e.target.value)}
 									/>
 								</div>
 
-								{/* Password Field */}
+								{/* Password */}
 								<div>
 									<label
 										htmlFor="edit-password"
-										className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2"
+										className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5"
 									>
 										Adgangskode *
 									</label>
-									<div className="relative flex items-center">
-										<input
-											id="edit-password"
-											type={showPassword ? "text" : "password"}
-											required
-											className={cn(
-												textField(),
-												"w-full py-2.5 pl-4 pr-12 text-sm"
-											)}
-											value={formPassword}
-											onChange={(e) => setFormPassword(e.target.value)}
-										/>
-										<button
-											type="button"
-											onClick={() => setShowPassword(!showPassword)}
-											className="absolute right-3 p-1.5 text-slate-400 hover:text-slate-600 transition-colors"
-										>
-											{showPassword ? (
-												<IconEyeOff size={18} />
-											) : (
-												<IconEye size={18} />
-											)}
-										</button>
-									</div>
+									<input
+										id="edit-password"
+										type="text"
+										required
+										className={cn(textField(), "w-full py-2 px-3 text-sm font-mono")}
+										value={formPassword}
+										onChange={(e) => setFormPassword(e.target.value)}
+									/>
 								</div>
 
-								{/* Action Buttons */}
-								<div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+								{/* Actions */}
+								<div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
 									<button
 										type="button"
 										onClick={handleCancelForm}
 										className={cn(
 											button(),
-											"px-5 py-2 text-sm text-slate-600 hover:text-slate-900 border-slate-200"
+											"px-4 py-1.5 text-xs text-slate-600 hover:text-slate-900 border-slate-200"
 										)}
 									>
 										Annuller
@@ -866,10 +812,12 @@ export default function AccountManagement({
 										disabled={isSubmitting}
 										className={cn(
 											button(),
-											"px-6 py-2 text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 border-transparent shadow-sm flex items-center gap-2"
+											"px-5 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 border-transparent flex items-center gap-1.5"
 										)}
 									>
-										{isSubmitting && <IconLoader2 size={16} className="animate-spin" />}
+										{isSubmitting && (
+											<IconLoader2 size={14} className="animate-spin" />
+										)}
 										<span>Gem Ændringer</span>
 									</button>
 								</div>
@@ -878,155 +826,127 @@ export default function AccountManagement({
 					</div>
 				) : selectedAccount ? (
 					/* View Account Details */
-					<div className="max-w-2xl mx-auto space-y-6">
+					<div className="max-w-2xl mx-auto space-y-4">
 						{/* Account Overview Header */}
-						<div className={cn(card(), "bg-white p-6 shadow-sm")}>
+						<div className={cn(card(), "p-5")}>
 							<div className="flex items-start justify-between">
-								<div className="flex items-center gap-4">
-									<div
-										className={cn(
-											"w-16 h-16 rounded-2xl flex items-center justify-center text-white shadow-inner",
-											selectedAccount.type === "ORGANIZER"
-												? "bg-gradient-to-br from-indigo-600 to-indigo-800"
-												: selectedAccount.type === "TEAM"
-												? "bg-gradient-to-br from-amber-500 to-amber-700"
-												: "bg-gradient-to-br from-emerald-600 to-emerald-800"
-										)}
-									>
+								<div className="flex items-center gap-3.5">
+									<div className="w-11 h-11 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
 										{selectedAccount.type === "ORGANIZER" ? (
-											<IconShield size={32} />
+											<IconShield size={22} />
 										) : selectedAccount.type === "TEAM" ? (
-											<IconUsers size={32} />
+											<IconUsers size={22} />
 										) : (
-											<IconFlag size={32} />
+											<IconFlag size={22} />
 										)}
 									</div>
 									<div>
 										<div className="flex items-center gap-2">
-											<h2 className="text-2xl font-bold text-slate-900">
+											<h2 className="text-xl font-bold text-slate-900">
 												{selectedAccount.username}
 											</h2>
-											<span
-												className={cn(
-													"text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full",
-													selectedAccount.type === "ORGANIZER"
-														? "bg-indigo-100 text-indigo-800"
-														: selectedAccount.type === "TEAM"
-														? "bg-amber-100 text-amber-800"
-														: "bg-emerald-100 text-emerald-800"
-												)}
-											>
+											<span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
 												{selectedAccount.type === "ORGANIZER"
 													? "Arrangør"
 													: selectedAccount.type === "TEAM"
-													? "Hold Login"
+													? "Hold"
 													: "Postvagt"}
 											</span>
 										</div>
-										<p className="text-xs text-slate-400 mt-1 font-mono">
-											Bruger ID #{selectedAccount.id}
+										<p className="text-xs text-slate-400 mt-0.5 font-mono">
+											Konto #{selectedAccount.id}
 										</p>
 									</div>
 								</div>
 
-								{/* Action Buttons */}
-								<div className="flex items-center gap-2">
+								{/* Action buttons */}
+								<div className="flex items-center gap-1.5">
 									<button
 										onClick={() => handleStartEdit(selectedAccount)}
 										className={cn(
 											button(),
-											"px-4 py-1.5 text-sm font-semibold flex items-center gap-1.5 hover:border-slate-800"
+											"px-3 py-1.5 text-xs font-medium flex items-center gap-1 hover:border-slate-800"
 										)}
 									>
-										<IconEdit size={16} /> Rediger
+										<IconEdit size={14} /> Rediger
 									</button>
 									<button
 										onClick={() => setAccountToDelete(selectedAccount)}
 										className={cn(
 											button(),
-											"px-4 py-1.5 text-sm font-semibold text-red-600 border-red-200 hover:bg-red-50 hover:border-red-400 flex items-center gap-1.5"
+											"px-3 py-1.5 text-xs font-medium text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 flex items-center gap-1"
 										)}
 									>
-										<IconTrash size={16} /> Slet
+										<IconTrash size={14} /> Slet
 									</button>
 								</div>
 							</div>
 						</div>
 
-						{/* Credentials Details Card */}
-						<div className={cn(card(), "bg-white p-6 shadow-sm space-y-4")}>
-							<h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">
-								Login Oplysninger
+						{/* Credentials Card */}
+						<div className={cn(card(), "p-5 space-y-3")}>
+							<h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+								<IconKey size={16} className="text-slate-400" />
+								<span>Loginoplysninger</span>
 							</h3>
 
-							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-								{/* Username Field with Copy */}
-								<div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
-									<div className="text-xs text-slate-400 font-semibold uppercase">
+							<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+								{/* Username block */}
+								<div className="p-3 rounded-lg bg-slate-50 border border-slate-200 flex flex-col justify-between">
+									<div className="text-[11px] text-slate-400 font-semibold uppercase">
 										Brugernavn
 									</div>
-									<div className="flex items-center justify-between mt-2">
-										<span className="font-semibold text-slate-800 truncate text-base">
+									<div className="flex items-center justify-between mt-1">
+										<span className="font-semibold text-slate-800 truncate text-sm">
 											{selectedAccount.username}
 										</span>
 										<button
-											onClick={() =>
-												handleCopy(selectedAccount.username, "username")
-											}
+											type="button"
+											onClick={() => handleCopy(selectedAccount.username, "username")}
 											title="Kopier brugernavn"
-											className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
+											className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
 										>
 											{copiedField === "username" ? (
-												<IconCheck size={16} className="text-emerald-600" />
+												<IconCheck size={14} className="text-emerald-600" />
 											) : (
-												<IconCopy size={16} />
+												<IconCopy size={14} />
 											)}
 										</button>
 									</div>
 								</div>
 
-								{/* Password Field with Show/Hide & Copy */}
-								<div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
-									<div className="text-xs text-slate-400 font-semibold uppercase">
+								{/* Password block */}
+								<div className="p-3 rounded-lg bg-slate-50 border border-slate-200 flex flex-col justify-between">
+									<div className="text-[11px] text-slate-400 font-semibold uppercase">
 										Adgangskode
 									</div>
-									<div className="flex items-center justify-between mt-2">
-										<span className="font-mono text-slate-800 text-base">
-											{showPassword
-												? selectedAccount.password
-												: "••••••••"}
+									<div className="flex items-center justify-between mt-1">
+										<span className="font-mono text-slate-800 text-sm">
+											{showPassword ? selectedAccount.password : "••••••••"}
 										</span>
-										<div className="flex items-center gap-1">
+										<div className="flex items-center gap-0.5">
 											<button
-												onClick={() =>
-													setShowPassword(!showPassword)
-												}
-												title={showPassword ? "Skjul adgangskode" : "Vis adgangskode"}
-												className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
+												type="button"
+												onClick={() => setShowPassword(!showPassword)}
+												title={showPassword ? "Skjul kode" : "Vis kode"}
+												className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
 											>
 												{showPassword ? (
-													<IconEyeOff size={16} />
+													<IconEyeOff size={14} />
 												) : (
-													<IconEye size={16} />
+													<IconEye size={14} />
 												)}
 											</button>
 											<button
-												onClick={() =>
-													handleCopy(
-														selectedAccount.password,
-														"password"
-													)
-												}
-												title="Kopier adgangskode"
-												className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
+												type="button"
+												onClick={() => handleCopy(selectedAccount.password, "password")}
+												title="Kopier kode"
+												className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
 											>
 												{copiedField === "password" ? (
-													<IconCheck
-														size={16}
-														className="text-emerald-600"
-													/>
+													<IconCheck size={14} className="text-emerald-600" />
 												) : (
-													<IconCopy size={16} />
+													<IconCopy size={14} />
 												)}
 											</button>
 										</div>
@@ -1035,104 +955,87 @@ export default function AccountManagement({
 							</div>
 						</div>
 
-						{/* Role & Permissions Card */}
-						<div className={cn(card(), "bg-white p-6 shadow-sm space-y-4")}>
-							<h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">
-								Rolle & Tilladelser
-							</h3>
-
-							{selectedAccount.type === "ORGANIZER" ? (
-								<div className="flex items-start gap-3 p-4 rounded-2xl bg-indigo-50/60 border border-indigo-100">
-									<IconShield
-										size={22}
-										className="text-indigo-600 shrink-0 mt-0.5"
-									/>
-									<div className="text-sm text-indigo-900">
-										<p className="font-semibold">
-											Arrangør / Kontrolcenter Adgang
-										</p>
-										<p className="mt-1 text-xs text-indigo-700 leading-relaxed">
-											Denne konto har fuld administratoradgang til konkurrencen. Arrangøren kan oprette og redigere begivenheder, tilknytte skoler og klasser, inddele elever i hold, opsætte stationer samt administrere øvrige brugerkonti.
-										</p>
-									</div>
-								</div>
-							) : selectedAccount.type === "TEAM" ? (
-								<div className="space-y-3">
-									<div className="flex items-start gap-3 p-4 rounded-2xl bg-amber-50/60 border border-amber-100">
-										<IconUsers
-											size={22}
-											className="text-amber-600 shrink-0 mt-0.5"
-										/>
-										<div className="text-sm text-amber-900">
-											<p className="font-semibold">Hold / Elev Fælleskonto</p>
-											<p className="mt-1 text-xs text-amber-700 leading-relaxed">
-												Delt elevlogin til holdet under konkurrencen. Når holdet logger ind første gang, vil de kunne vælge holdets endelige navn og holdbillede/avatar.
-											</p>
+						{/* Linked Resource Card (if linked to team or station) */}
+						{(selectedAccount.teamId || selectedAccount.stationId) && (
+							<div className={cn(card(), "p-5 space-y-3")}>
+								<h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+									Tilknyttet ressource
+								</h3>
+								{selectedAccount.teamId && (
+									<div className="p-3 rounded-lg bg-amber-50/50 border border-amber-200 flex items-center justify-between">
+										<div className="flex items-center gap-2.5">
+											<div className="w-8 h-8 rounded bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+												<IconUsers size={16} />
+											</div>
+											<div>
+												<div className="text-xs font-bold text-slate-900">
+													Hold #{selectedAccount.teamId}
+												</div>
+												<div className="text-[11px] text-slate-500">
+													Kontoen er automatisk forbundet til et hold.
+												</div>
+											</div>
 										</div>
-									</div>
-									{selectedAccount.teamId && (
 										<Link
 											href={`/admin/${activeEventId}/teams/${selectedAccount.teamId}`}
-											className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors text-xs font-semibold text-slate-800"
+											className={cn(
+												button(),
+												"text-xs px-2.5 py-1 flex items-center gap-1 border-amber-200 bg-white"
+											)}
 										>
-											<div className="flex items-center gap-2">
-												<IconUsers size={16} className="text-amber-600" />
-												<span>Gå til tilknyttet hold #{selectedAccount.teamId}</span>
-											</div>
-											<IconArrowRight size={16} className="text-slate-400" />
+											<span>Gå til hold</span>
+											<IconArrowRight size={13} />
 										</Link>
-									)}
-								</div>
-							) : (
-								<div className="space-y-3">
-									<div className="flex items-start gap-3 p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100">
-										<IconFlag
-											size={22}
-											className="text-emerald-600 shrink-0 mt-0.5"
-										/>
-										<div className="text-sm text-emerald-900">
-											<p className="font-semibold">Postvagt / Stationsadgang</p>
-											<p className="mt-1 text-xs text-emerald-700 leading-relaxed">
-												Denne konto giver adgang til stationsvisningen for den tildelte post. Postvagten kan logge ind under konkurrencen for at se hold der ankommer til stationen, starte/stoppe tidtagning og indsende opnåede resultater.
-											</p>
-										</div>
 									</div>
-									{selectedAccount.stationId && (
+								)}
+								{selectedAccount.stationId && (
+									<div className="p-3 rounded-lg bg-emerald-50/50 border border-emerald-200 flex items-center justify-between">
+										<div className="flex items-center gap-2.5">
+											<div className="w-8 h-8 rounded bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+												<IconFlag size={16} />
+											</div>
+											<div>
+												<div className="text-xs font-bold text-slate-900">
+													Station #{selectedAccount.stationId}
+												</div>
+												<div className="text-[11px] text-slate-500">
+													Kontoen er automatisk forbundet til en post/station.
+												</div>
+											</div>
+										</div>
 										<Link
 											href={`/admin/${activeEventId}/stations/${selectedAccount.stationId}`}
-											className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors text-xs font-semibold text-slate-800"
+											className={cn(
+												button(),
+												"text-xs px-2.5 py-1 flex items-center gap-1 border-emerald-200 bg-white"
+											)}
 										>
-											<div className="flex items-center gap-2">
-												<IconFlag size={16} className="text-emerald-600" />
-												<span>Gå til tilknyttet station #{selectedAccount.stationId}</span>
-											</div>
-											<IconArrowRight size={16} className="text-slate-400" />
+											<span>Gå til station</span>
+											<IconArrowRight size={13} />
 										</Link>
-									)}
-								</div>
-							)}
-						</div>
+									</div>
+								)}
+							</div>
+						)}
 					</div>
 				) : (
-					/* Empty State when no accounts exist or none selected */
-					<div className="h-full flex flex-col items-center justify-center max-w-md mx-auto text-center">
-						<div className="w-20 h-20 rounded-3xl bg-slate-100 text-slate-400 flex items-center justify-center mb-4">
-							<IconKey size={36} />
+					/* Empty state */
+					<div className="h-full flex flex-col items-center justify-center max-w-sm mx-auto text-center">
+						<div className="w-14 h-14 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center mb-3">
+							<IconKey size={26} />
 						</div>
-						<h3 className="text-xl font-bold text-slate-800">
-							Ingen konto valgt
-						</h3>
-						<p className="text-sm text-slate-500 mt-2 mb-6">
-							Vælg en brugerkonto fra listen til venstre for at se eller redigere oplysninger, eller opret en ny konto.
+						<h3 className="text-base font-bold text-slate-800">Ingen konto valgt</h3>
+						<p className="text-xs text-slate-500 mt-1 mb-4">
+							Vælg en konto fra listen til venstre for at se og redigere detaljerne, eller opret en ny konto.
 						</p>
 						<button
 							onClick={handleStartCreate}
 							className={cn(
 								button(),
-								"bg-slate-900 text-white hover:bg-slate-800 border-transparent px-6 py-2 font-bold flex items-center gap-2"
+								"bg-slate-900 text-white hover:bg-slate-800 border-transparent px-4 py-1.5 text-xs font-semibold flex items-center gap-1.5"
 							)}
 						>
-							<IconPlus size={18} /> Opret ny konto
+							<IconPlus size={16} /> Opret ny konto
 						</button>
 					</div>
 				)}
@@ -1140,61 +1043,41 @@ export default function AccountManagement({
 
 			{/* Delete Confirmation Modal */}
 			{accountToDelete && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-					<div
-						className={cn(
-							card(),
-							"bg-white p-6 max-w-md w-full shadow-2xl space-y-4"
-						)}
-					>
-						<div className="flex items-center gap-3 text-red-600">
-							<div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
-								<IconTrash size={22} />
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 backdrop-blur-xs p-4 animate-in fade-in duration-100">
+					<div className={cn(card(), "p-5 max-w-md w-full space-y-3.5")}>
+						<div className="flex items-center gap-2.5 text-red-600">
+							<div className="w-8 h-8 rounded-md bg-red-50 flex items-center justify-center shrink-0">
+								<IconTrash size={18} />
 							</div>
 							<div>
-								<h3 className="font-bold text-lg text-slate-900">
-									Slet brugerkonto
-								</h3>
-								<p className="text-xs text-slate-500">
-									Handlingen kan ikke fortrydes
-								</p>
+								<h3 className="font-bold text-sm text-slate-900">Slet brugerkonto</h3>
+								<p className="text-[11px] text-slate-500">Handlingen kan ikke fortrydes</p>
 							</div>
 						</div>
 
-						<p className="text-sm text-slate-600">
+						<p className="text-xs text-slate-600">
 							Er du sikker på, at du vil slette kontoen{" "}
-							<span className="font-bold text-slate-900">
-								&quot;{accountToDelete.username}&quot;
-							</span>{" "}
-							({accountToDelete.type === "ORGANIZER" ? "Arrangør" : accountToDelete.type === "TEAM" ? "Hold" : "Postvagt"})?
+							<span className="font-semibold text-slate-900">&quot;{accountToDelete.username}&quot;</span>?
 						</p>
 
-						{accountToDelete.type === "TEAM" && (
-							<div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2">
-								<IconAlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+						{(accountToDelete.teamId || accountToDelete.stationId) && (
+							<div className="p-2.5 rounded-md bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2">
+								<IconAlertTriangle size={15} className="text-amber-600 shrink-0 mt-0.5" />
 								<span>
-									<strong>Advarsel:</strong> Dette er en hold-konto. Sletning af denne konto vil automatisk slette det tilknyttede hold, da et hold ikke kan eksistere uden en konto!
+									<strong>Bemærk:</strong> Denne konto er tilknyttet et{" "}
+									{accountToDelete.teamId ? "hold" : "station"}. Sletning af kontoen vil også slette det tilhørende element!
 								</span>
 							</div>
 						)}
 
-						{accountToDelete.type === "POST_GUARD" && accountToDelete.stationId && (
-							<div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2">
-								<IconAlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
-								<span>
-									<strong>Advarsel:</strong> Dette er en postvagt-konto tilknyttet en station. Sletning af denne konto vil automatisk slette den tilknyttede station og alle dens tidsregistreringer!
-								</span>
-							</div>
-						)}
-
-						<div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+						<div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
 							<button
 								type="button"
 								disabled={isDeleting}
 								onClick={() => setAccountToDelete(null)}
 								className={cn(
 									button(),
-									"px-4 py-1.5 text-sm text-slate-600 hover:text-slate-900 border-slate-200"
+									"px-3 py-1 text-xs text-slate-600 hover:text-slate-900 border-slate-200"
 								)}
 							>
 								Annuller
@@ -1205,12 +1088,10 @@ export default function AccountManagement({
 								onClick={handleDeleteConfirm}
 								className={cn(
 									button(),
-									"px-5 py-1.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 border-transparent shadow-sm flex items-center gap-2"
+									"px-4 py-1 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 border-transparent flex items-center gap-1.5"
 								)}
 							>
-								{isDeleting && (
-									<IconLoader2 size={16} className="animate-spin" />
-								)}
+								{isDeleting && <IconLoader2 size={13} className="animate-spin" />}
 								<span>Slet konto</span>
 							</button>
 						</div>

@@ -116,7 +116,6 @@ export default function SearchableSelect<T = string | number>({
 	const handleSelectCustom = (customText: string) => {
 		const trimmed = customText.trim();
 		if (!trimmed) return;
-		// Cast string to T
 		onChange(trimmed as unknown as T);
 		setSearchQuery(null);
 		setIsOpen(false);
@@ -177,7 +176,7 @@ export default function SearchableSelect<T = string | number>({
 		<div ref={containerRef} className={cn("relative w-full", className)}>
 			<div className="relative flex items-center">
 				{leftIcon && (
-					<div className="absolute left-3.5 text-slate-400 pointer-events-none z-10">
+					<div className="absolute left-3 text-slate-400 pointer-events-none z-10">
 						{leftIcon}
 					</div>
 				)}
@@ -206,20 +205,20 @@ export default function SearchableSelect<T = string | number>({
 					onKeyDown={handleKeyDown}
 					className={cn(
 						textField(),
-						"w-full py-2.5 text-sm transition-all",
-						leftIcon ? "pl-10" : "pl-3.5",
-						displayValue ? "pr-16" : "pr-9",
+						"w-full py-2 text-sm transition-colors",
+						leftIcon ? "pl-9" : "pl-3",
+						displayValue ? "pr-14" : "pr-8",
 						disabled && "opacity-60 cursor-not-allowed bg-slate-100"
 					)}
 				/>
 
-				<div className="absolute right-2 flex items-center gap-0.5">
+				<div className="absolute right-1.5 flex items-center">
 					{displayValue && !disabled && (
 						<button
 							type="button"
 							tabIndex={-1}
 							onClick={handleClear}
-							className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+							className="p-1 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
 							aria-label="Ryd felt"
 						>
 							<IconX size={14} />
@@ -244,9 +243,9 @@ export default function SearchableSelect<T = string | number>({
 						aria-label="Åbn dropdown"
 					>
 						<IconChevronDown
-							size={18}
+							size={16}
 							className={cn(
-								"transition-transform duration-200",
+								"transition-transform duration-150",
 								isOpen && "rotate-180 text-slate-700"
 							)}
 						/>
@@ -258,7 +257,7 @@ export default function SearchableSelect<T = string | number>({
 			{isOpen && !disabled && (
 				<ul
 					ref={listRef}
-					className="absolute z-50 left-0 right-0 mt-1.5 max-h-60 overflow-y-auto rounded-2xl border border-slate-200 bg-white py-1.5 shadow-xl animate-in fade-in slide-in-from-top-1 duration-150"
+					className="absolute z-50 left-0 right-0 mt-1 max-h-60 overflow-y-auto rounded-lg border border-slate-200 bg-white py-1"
 				>
 					{/* Creatable / Custom option item */}
 					{isNewCustom && searchQuery && searchQuery.trim() && (
@@ -266,11 +265,11 @@ export default function SearchableSelect<T = string | number>({
 							onClick={() => handleSelectCustom(searchQuery)}
 							onMouseEnter={() => setHighlightedIndex(0)}
 							className={cn(
-								"px-3.5 py-2.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100/90 cursor-pointer border-b border-slate-100 flex items-center gap-2 transition-colors",
+								"px-3 py-2 text-xs font-medium text-emerald-800 bg-emerald-50 hover:bg-emerald-100/80 cursor-pointer border-b border-slate-100 flex items-center gap-2 transition-colors",
 								highlightedIndex === 0 && "bg-emerald-100"
 							)}
 						>
-							<IconPlus size={15} className="shrink-0 text-emerald-600" />
+							<IconPlus size={14} className="shrink-0 text-emerald-600" />
 							<span className="truncate">
 								{customCreateLabel
 									? customCreateLabel(searchQuery.trim())
@@ -292,32 +291,32 @@ export default function SearchableSelect<T = string | number>({
 									onClick={() => handleSelectOption(opt)}
 									onMouseEnter={() => setHighlightedIndex(itemIndex)}
 									className={cn(
-										"flex items-center justify-between px-3.5 py-2 text-sm cursor-pointer transition-colors",
+										"flex items-center justify-between px-3 py-1.5 text-sm cursor-pointer transition-colors",
 										opt.disabled
 											? "opacity-50 cursor-not-allowed bg-slate-50"
 											: isHighlighted
 											? "bg-slate-100 text-slate-900"
 											: "hover:bg-slate-50 text-slate-700",
-										isSelected && "bg-slate-50 font-semibold text-slate-900"
+										isSelected && "bg-slate-100 font-medium text-slate-900"
 									)}
 								>
-									<div className="flex items-center gap-2.5 min-w-0 pr-2">
+									<div className="flex items-center gap-2 min-w-0 pr-2">
 										{opt.icon && (
 											<span
 												className={cn(
-													"shrink-0",
-													isSelected ? "text-emerald-600" : "text-slate-400"
+													"shrink-0 text-slate-400",
+													isSelected && "text-slate-700"
 												)}
 											>
 												{opt.icon}
 											</span>
 										)}
 										<div className="flex flex-col min-w-0">
-											<span className="truncate text-slate-800 font-medium">
+											<span className="truncate text-slate-800 font-normal">
 												{opt.label}
 											</span>
 											{opt.subLabel && (
-												<span className="text-xs text-slate-400 font-normal truncate">
+												<span className="text-xs text-slate-400 truncate">
 													{opt.subLabel}
 												</span>
 											)}
@@ -325,14 +324,14 @@ export default function SearchableSelect<T = string | number>({
 									</div>
 
 									{isSelected && (
-										<IconCheck size={16} className="text-emerald-600 shrink-0 ml-2" />
+										<IconCheck size={15} className="text-slate-700 shrink-0 ml-2" />
 									)}
 								</li>
 							);
 						})
 					) : (
 						!isNewCustom && (
-							<li className="px-4 py-3 text-xs text-slate-400 text-center">
+							<li className="px-3 py-2 text-xs text-slate-400 text-center">
 								{options.length === 0 ? emptyText : noResultsText}
 							</li>
 						)

@@ -1,6 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
-import { EventModel } from "@/models/EventModel";
+import { EventModel, CreateEventDTO, UpdateEventDTO } from "@/models/EventModel";
 import {
 	AccountModel,
 	CreateAccountDTO,
@@ -94,15 +94,114 @@ function slugify(text: string): string {
 }
 
 // ---------------- EVENTS ----------------
-export async function getEvents(): Promise<EventModel[]> {
+export async function getEvents(search?: string): Promise<EventModel[]> {
 	const db = await readDb();
-	return db.events;
+	if (!search) return db.events;
+	const query = search.toLowerCase().trim();
+	return db.events.filter(
+		(e) =>
+			e.title.toLowerCase().includes(query) ||
+			(e.date && e.date.toLowerCase().includes(query)) ||
+			(e.location && e.location.toLowerCase().includes(query)) ||
+			(e.description && e.description.toLowerCase().includes(query))
+	);
 }
 
 export async function getEventById(id: number): Promise<EventModel | null> {
 	const db = await readDb();
 	const event = db.events.find((e) => e.id === id);
 	return event ?? null;
+}
+
+export async function createEvent(data: CreateEventDTO): Promise<EventModel> {
+	const db = await readDb();
+	const trimmedTitle = data.title.trim();
+	if (!trimmedTitle) {
+		throw new Error("Event titel er påkrævet");
+	}
+	if (!data.date) {
+		throw new Error("Dato er påkrævet");
+	}
+
+	const maxId = db.events.length > 0 ? Math.max(...db.events.map((e) => e.id)) : -1;
+	const newEvent: EventModel = {
+		id: maxId + 1,
+		title: trimmedTitle,
+		date: data.date,
+		location: data.location?.trim() || undefined,
+		description: data.description?.trim() || undefined,
+	};
+
+	db.events.push(newEvent);
+	await writeDb(db);
+	return newEvent;
+}
+
+export async function updateEvent(
+	id: number,
+	data: UpdateEventDTO
+): Promise<EventModel> {
+	const db = await readDb();
+	const index = db.events.findIndex((e) => e.id === id);
+	if (index === -1) {
+		throw new Error(`Event med id ${id} blev ikke fundet`);
+	}
+
+	const current = db.events[index];
+	if (data.title !== undefined) {
+		const trimmed = data.title.trim();
+		if (!trimmed) throw new Error("Event titel må ikke være tom");
+		current.title = trimmed;
+	}
+	if (data.date !== undefined) {
+		if (!data.date) throw new Error("Dato må ikke være tom");
+		current.date = data.date;
+	}
+	if (data.location !== undefined) {
+		current.location = data.location.trim() || undefined;
+	}
+	if (data.description !== undefined) {
+		current.description = data.description.trim() || undefined;
+	}
+
+	db.events[index] = current;
+	await writeDb(db);
+	return current;
+}
+
+export async function deleteEvent(id: number): Promise<boolean> {
+	const db = await readDb();
+	const index = db.events.findIndex((e) => e.id === id);
+	if (index === -1) {
+		throw new Error(`Event med id ${id} blev ikke fundet`);
+	}
+
+	// Remove event
+	db.events.splice(index, 1);
+
+	// Find classes and their teams
+	const eventClasses = db.classes.filter((c) => c.eventId === id);
+	const classIds = new Set(eventClasses.map((c) => c.id));
+	const eventTeams = db.teams.filter((t) => t.eventId === id || classIds.has(t.classId));
+	const teamAccountIds = new Set(eventTeams.map((t) => t.accountId));
+
+	// Find stations for this event
+	const eventStations = db.stations.filter((s) => s.eventId === id);
+	const stationAccountIds = new Set(eventStations.map((s) => s.accountId));
+
+	// Remove classes, teams, stations, station times
+	db.classes = db.classes.filter((c) => c.eventId !== id);
+	db.teams = db.teams.filter((t) => t.eventId !== id && !classIds.has(t.classId));
+	db.stations = db.stations.filter((s) => s.eventId !== id);
+	db.stationTimes = db.stationTimes.filter((st) => st.eventId !== id);
+
+	// Remove linked accounts
+	db.accounts = db.accounts.filter(
+		(a) => !teamAccountIds.has(a.id) && !stationAccountIds.has(a.id)
+	);
+
+	await writeDb(db);
+	return true;
 }
 
 // ---------------- ACCOUNTS ----------------

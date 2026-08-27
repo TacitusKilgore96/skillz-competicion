@@ -1,30 +1,26 @@
-import {cn, tv} from "tailwind-variants";
-import card from "@/components/admin/Card";
+import { tv } from "tailwind-variants";
 
 export const button = tv({
-	base: "transition-colors cursor-pointer",
+	base: "transition-colors cursor-pointer text-sm font-medium inline-flex items-center justify-center gap-1.5",
 	variants: {
 		shape: {
-			pill: cn(card(), "rounded-full px-4 py-1 hover:border-hover"),
-			link: cn("hover:underline")
-		}
+			pill: "rounded-lg px-3.5 py-1.5 border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300",
+			link: "hover:underline text-slate-700 p-0 border-none bg-transparent",
+		},
 	},
 	defaultVariants: {
-		shape: "pill"
-	}
-})
+		shape: "pill",
+	},
+});
 
 export const iconButton = tv({
-	base: cn(
-		button.base,
-		"p-2 size-fit"
-	),
+	base: "transition-colors cursor-pointer rounded-lg p-2 border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 inline-flex items-center justify-center",
 	variants: {
 		shape: {
-			pill: cn(button.variants.shape.pill, "p-2")
-		}
+			pill: "rounded-lg p-2",
+		},
 	},
 	defaultVariants: {
-		shape: "pill"
-	}
-})
+		shape: "pill",
+	},
+});
