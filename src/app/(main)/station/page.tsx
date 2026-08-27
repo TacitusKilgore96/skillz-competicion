@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import team from "../team/page";
 
 const API_BASE_URL = "https://skills.coolify.pandasystems.dev/api.php";
 
@@ -9,6 +10,9 @@ type Team = {
   name: string;
   time: string; // MM:SS format
   resultId?: number; // Bruges til DELETE-kald
+  seconds: string;
+  team_id: number;
+  station_id: number;
 };
 
 type Class = {
@@ -26,13 +30,6 @@ type Station = {
   id: string;
   number: string;
   name: string;
-};
-
-type Results = {
-  id: number;
-  seconds: string;
-  team_id: number;
-  station_id: number;
 };
 
 const normalizeTime = (value: string) => {
@@ -86,7 +83,7 @@ export default function StationPage() {
   const [loading, setLoading] = useState(true);
   const [classData, setClassData] = useState<Class | null>(null);
   const [classId, setClassId] = useState<number>(1);
-  const [timeData, setTimeData] = useState<Results[]>([]);
+  const [timeData, setTimeData] = useState<Team[]>([]);
 
   // 1. GET: Hent hold og eksisterende resultater fra API
   useEffect(() => {
@@ -290,7 +287,9 @@ export default function StationPage() {
                   {loading ? (
                     <div className="p-6 text-center text-secondary">Henter data...</div>
                   ) : (
-                    teamTimes.map((team) => (
+                    teamTimes
+                    .filter(team=> team.station_id=15)
+                    .map((team) => (
                       <div
                         key={team.id}
                         className="flex flex-col gap-4 px-6 py-5 transition hover:bg-primary/60 sm:flex-row sm:items-center sm:justify-between"
@@ -313,7 +312,7 @@ export default function StationPage() {
                           {team.time ? (
                             <>
                               <div className="rounded-xl border border-green-dark bg-success-background px-5 py-3 font-mono text-lg font-bold text-success" onClick={() => updateTime(team.id, team.time)}>
-                                {timeData[team.id].seconds}
+                                {team.time}
                               </div>
 
                               <button
