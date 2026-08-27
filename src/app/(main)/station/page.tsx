@@ -1,21 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import {
-	IconLogout,
-	IconTrophy,
-	IconClock,
-	IconLoader2,
-	IconTool,
-	IconUsers,
-	IconSchool,
-	IconCheck,
-	IconX,
-	IconEdit,
-	IconTrash,
-} from "@tabler/icons-react";
 import {
 	getEvents,
 	getStations,
@@ -26,7 +11,7 @@ import {
 	updateStationTime,
 	deleteStationTime,
 } from "@/libs/API";
-import { getCurrentUser, logoutUser, AuthUser } from "@/libs/auth";
+import { getCurrentUser, getCachedUser, logoutUser, AuthUser } from "@/libs/auth";
 import { StationModel, StationTimeModel } from "@/models/StationModel";
 import { ClassModel } from "@/models/ClassModel";
 import { TeamModel } from "@/models/TeamModel";
@@ -77,21 +62,19 @@ const secondsToTime = (sec: number): string => {
 };
 
 export default function StationPage() {
-	const router = useRouter();
-
-	const [user, setUser] = useState<AuthUser | null>(null);
-	const [authChecking, setAuthChecking] = useState(true);
+	const cached = getCachedUser();
+	const [user, setUser] = useState<AuthUser | null>(cached ?? null);
+	const [authChecking, setAuthChecking] = useState<boolean>(cached === undefined);
 
 	const [events, setEvents] = useState<EventModel[]>([]);
 	const [stations, setStations] = useState<StationModel[]>([]);
-	const [activeStation, setActiveStation] = useState<StationModel | null>(null);
 	const [classes, setClasses] = useState<ClassModel[]>([]);
-	const [classId, setClassId] = useState<number>(0);
 	const [teams, setTeams] = useState<TeamModel[]>([]);
 	const [stationTimes, setStationTimes] = useState<StationTimeModel[]>([]);
-
-	const [draftTimes, setDraftTimes] = useState<Record<number, string>>({});
 	const [loading, setLoading] = useState(true);
+
+	const [classIndex, setClassIndex] = useState<number>(0);
+	const [draftTimes, setDraftTimes] = useState<Record<number, string>>({});
 
 	// 1. Auth Guard
 	useEffect(() => {
@@ -108,10 +91,9 @@ export default function StationPage() {
 		});
 	}, []);
 
-	// 2. Fetch Data from local API
+	// 2. Fetch Data
 	const fetchData = async () => {
 		try {
-			setLoading(true);
 			const [eventsData, stationsData, classesData, teamsData, timesData] =
 				await Promise.all([
 					getEvents(),
@@ -126,30 +108,8 @@ export default function StationPage() {
 			setClasses(classesData);
 			setTeams(teamsData);
 			setStationTimes(timesData);
-
-			// Determine which station to display
-			let currentStation: StationModel | null = null;
-			if (user?.type === "POST_GUARD") {
-				currentStation =
-					stationsData.find(
-						(s) => s.id === user.stationId || s.accountId === user.id
-					) || stationsData[0] || null;
-			} else {
-				currentStation = stationsData[0] || null;
-			}
-			setActiveStation(currentStation);
-
-			// Set initial class
-			if (classesData.length > 0) {
-				const relevantClasses = currentStation
-					? classesData.filter((c) => c.eventId === currentStation.eventId)
-					: classesData;
-				if (relevantClasses.length > 0) {
-					setClassId(relevantClasses[0].id);
-				}
-			}
 		} catch (err) {
-			console.error("Fejl ved hentning af postdata:", err);
+			console.error("Fejl ved hentning af data:", err);
 		} finally {
 			setLoading(false);
 		}
@@ -158,6 +118,8 @@ export default function StationPage() {
 	useEffect(() => {
 		if (user) {
 			fetchData();
+			const interval = setInterval(fetchData, 4000);
+			return () => clearInterval(interval);
 		}
 	}, [user]);
 
@@ -166,63 +128,92 @@ export default function StationPage() {
 		window.location.href = "/login";
 	};
 
-	// Active class and event
-	const eventClasses = useMemo(() => {
-		if (!activeStation) return classes;
-		return classes.filter((c) => c.eventId === activeStation.eventId);
-	}, [activeStation, classes]);
-
-	const classData = useMemo(() => {
-		return classes.find((c) => c.id === classId) || eventClasses[0] || null;
-	}, [classes, classId, eventClasses]);
-
-	// Teams for current class and station's event
-	const classTeams = useMemo(() => {
-		if (!classData) return [];
-		return teams.filter((t) => t.classId === classData.id);
-	}, [classData, teams]);
-
-	// Times mapped by teamId for active station
-	const teamTimeMap = useMemo(() => {
-		const map = new Map<number, StationTimeModel>();
-		if (!activeStation) return map;
-		for (const st of stationTimes) {
-			if (st.stationId === activeStation.id) {
-				map.set(st.teamId, st);
-			}
+	// Active Station & Event
+	const currentStation = useMemo(() => {
+		if (!user) return null;
+		if (user.stationId !== undefined) {
+			return stations.find((s) => s.id === user.stationId) || null;
 		}
-		return map;
-	}, [activeStation, stationTimes]);
+		return stations[0] || null;
+	}, [user, stations]);
 
-	const updateTimeDraft = (id: number, time: string) => {
+	const currentEvent = useMemo(() => {
+		if (!currentStation) {
+			return events.find((e) => e.status === "RUNNING") || events[0] || null;
+		}
+		return events.find((e) => e.id === currentStation.eventId) || events[0] || null;
+	}, [currentStation, events]);
+
+	const eventClasses = useMemo(() => {
+		if (!currentEvent) return [];
+		return classes.filter((c) => c.eventId === currentEvent.id);
+	}, [classes, currentEvent]);
+
+	const selectedClass = useMemo(() => {
+		if (eventClasses.length === 0) return null;
+		const safeIndex = Math.min(classIndex, eventClasses.length - 1);
+		return eventClasses[safeIndex >= 0 ? safeIndex : 0] || null;
+	}, [eventClasses, classIndex]);
+
+	const classTeams = useMemo(() => {
+		if (!selectedClass) return [];
+		return teams.filter((t) => t.classId === selectedClass.id);
+	}, [teams, selectedClass]);
+
+	const currentStationTimes = useMemo(() => {
+		if (!currentStation) return [];
+		return stationTimes.filter((st) => st.stationId === currentStation.id);
+	}, [stationTimes, currentStation]);
+
+	// Format teams for display
+	const teamTimes = useMemo(() => {
+		return classTeams.map((t) => {
+			const timeRec = currentStationTimes.find((st) => st.teamId === t.id);
+			return {
+				id: t.id,
+				name: t.name,
+				time: timeRec ? secondsToTime(timeRec.timeSeconds) : "",
+				resultId: timeRec?.id,
+			};
+		});
+	}, [classTeams, currentStationTimes]);
+
+	const completed = useMemo(() => {
+		return teamTimes.filter((t) => t.time !== "");
+	}, [teamTimes]);
+
+	const bestTime = useMemo(() => {
+		if (completed.length === 0) return null;
+		return completed.reduce((best, current) => {
+			return timeToSeconds(current.time) < timeToSeconds(best.time) ? current : best;
+		}, completed[0]);
+	}, [completed]);
+
+	const updateTime = (id: number, time: string) => {
 		setDraftTimes((current) => ({
 			...current,
 			[id]: time.slice(0, 5),
 		}));
 	};
 
-	// Save or update time
-	const saveTime = async (teamId: number) => {
-		if (!activeStation) return;
-		const draft = normalizeTime(draftTimes[teamId] ?? "");
-		if (!draft) return;
+	const saveTime = async (id: number) => {
+		const draft = normalizeTime(draftTimes[id] ?? "");
+		if (!draft || !currentStation || !currentEvent) return;
 
 		const seconds = timeToSeconds(draft);
 		try {
-			const existing = teamTimeMap.get(teamId);
+			const existing = currentStationTimes.find((st) => st.teamId === id);
 			if (existing) {
 				const updated = await updateStationTime(existing.id, {
 					timeSeconds: seconds,
 					completedAt: new Date().toISOString(),
 				});
-				setStationTimes((prev) =>
-					prev.map((item) => (item.id === updated.id ? updated : item))
-				);
+				setStationTimes((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
 			} else {
 				const created = await createStationTime({
-					eventId: activeStation.eventId,
-					stationId: activeStation.id,
-					teamId: teamId,
+					stationId: currentStation.id,
+					teamId: id,
+					eventId: currentEvent.id,
 					timeSeconds: seconds,
 					completedAt: new Date().toISOString(),
 				});
@@ -231,130 +222,45 @@ export default function StationPage() {
 
 			setDraftTimes((current) => ({
 				...current,
-				[teamId]: "",
+				[id]: "",
 			}));
 		} catch (err) {
 			console.error("Fejl ved gemning af tid:", err);
 		}
 	};
 
-	// Delete time
-	const deleteTime = async (teamId: number) => {
-		const targetRecord = teamTimeMap.get(teamId);
-		if (!targetRecord) return;
-
-		try {
-			await deleteStationTime(targetRecord.id);
-			setStationTimes((prev) => prev.filter((st) => st.id !== targetRecord.id));
-			setDraftTimes((current) => ({
-				...current,
-				[teamId]: "",
-			}));
-		} catch (err) {
-			console.error("Fejl ved sletning af tid:", err);
-		}
-	};
-
-	// Calculated metrics
-	const completedTeams = useMemo(() => {
-		return classTeams.filter((team) => teamTimeMap.has(team.id));
-	}, [classTeams, teamTimeMap]);
-
-	const bestTeamRecord = useMemo(() => {
-		if (!activeStation) return null;
-		const relevantTimes = stationTimes.filter(
-			(st) => st.stationId === activeStation.id
-		);
-		if (relevantTimes.length === 0) return null;
-
-		let best = relevantTimes[0];
-		for (const st of relevantTimes) {
-			if (st.timeSeconds < best.timeSeconds) {
-				best = st;
+	const deleteTime = async (id: number) => {
+		const targetTime = currentStationTimes.find((st) => st.teamId === id);
+		if (targetTime) {
+			try {
+				await deleteStationTime(targetTime.id);
+				setStationTimes((prev) => prev.filter((t) => t.id !== targetTime.id));
+			} catch (err) {
+				console.error("Fejl ved sletning af tid:", err);
 			}
 		}
 
-		const team = teams.find((t) => t.id === best.teamId);
-		return {
-			name: team ? team.name : `Hold #${best.teamId}`,
-			time: secondsToTime(best.timeSeconds),
-		};
-	}, [activeStation, stationTimes, teams]);
-
-	// Next / Previous Class
-	const currentClassIndex = eventClasses.findIndex((c) => c.id === classData?.id);
-
-	const handlePrevClass = () => {
-		if (currentClassIndex > 0) {
-			setClassId(eventClasses[currentClassIndex - 1].id);
-		}
-	};
-
-	const handleNextClass = () => {
-		if (currentClassIndex < eventClasses.length - 1) {
-			setClassId(eventClasses[currentClassIndex + 1].id);
-		}
+		setDraftTimes((current) => ({
+			...current,
+			[id]: "",
+		}));
 	};
 
 	if (authChecking) {
-		return (
-			<div className="h-screen w-screen bg-background flex flex-col items-center justify-center text-primary gap-3">
-				<IconLoader2 size={32} className="animate-spin text-primary/50" />
-				<p className="text-xs text-secondary font-medium">Verificerer postvagt adgang...</p>
-			</div>
-		);
+		return null;
 	}
 
 	return (
 		<div className="min-h-screen bg-background text-primary">
 			<div className="flex min-h-screen">
 				{/* SIDEBAR */}
-				<aside className="hidden w-62.5 shrink-0 border-r border-border bg-background-secondary p-4 md:flex md:flex-col justify-between">
-					<div className="space-y-6">
-						<div className="flex items-center gap-3 px-3 py-3">
-							<div>
-								<div className="font-bold tracking-wide uppercase">
-									{classData?.school || "SKILLS"}
-								</div>
-								<div className="text-xs text-secondary">
-									{activeStation?.name || "Postvagt"}
-								</div>
+				<aside className="hidden w-62.5 shrink-0 border-r border-border bg-background-secondary p-4 md:flex md:flex-col">
+					<div className="mb-8 flex items-center gap-3 px-3 py-3">
+						<div>
+							<div className="font-bold tracking-wide uppercase">
+								{selectedClass?.school || currentEvent?.title || "SKILLS"}
 							</div>
 						</div>
-
-						{/* Class list in sidebar */}
-						<div className="space-y-1">
-							<span className="text-[11px] font-semibold uppercase tracking-wider text-secondary px-3 block mb-2">
-								Klasser
-							</span>
-							{eventClasses.map((c) => (
-								<button
-									key={c.id}
-									type="button"
-									onClick={() => setClassId(c.id)}
-									className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition truncate flex items-center justify-between ${
-										classData?.id === c.id
-											? "bg-green text-white font-bold"
-											: "text-secondary hover:bg-box-background hover:text-primary"
-									}`}
-								>
-									<span className="truncate">{c.name}</span>
-									<span className="text-[10px] opacity-75">{c.school}</span>
-								</button>
-							))}
-						</div>
-					</div>
-
-					{/* Sidebar footer logout */}
-					<div className="pt-4 border-t border-border">
-						<button
-							type="button"
-							onClick={handleLogout}
-							className="flex items-center gap-2 w-full px-3 py-2 text-xs font-medium text-secondary hover:text-danger rounded-xl hover:bg-box-background transition"
-						>
-							<IconLogout size={15} />
-							<span>Log ud</span>
-						</button>
 					</div>
 				</aside>
 
@@ -364,31 +270,23 @@ export default function StationPage() {
 					<header className="flex h-18.5 items-center justify-between border-b border-border bg-box-background/80 px-5 md:px-9">
 						<div className="flex items-center gap-3">
 							<div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-light font-bold text-green-dark">
-								{user?.username?.charAt(0).toUpperCase() || "P"}
+								{user?.username ? user.username.charAt(0).toUpperCase() : "P"}
 							</div>
-							<div className="text-left">
-								<div className="text-sm font-semibold">{activeStation?.name || "Post"}</div>
+							<div className="hidden text-left sm:block">
+								<div className="text-sm font-semibold">
+									{currentStation?.name || "Værksted"}
+								</div>
 								<div className="text-xs text-secondary">{user?.username}</div>
 							</div>
 						</div>
 
 						<div className="flex items-center gap-3">
-							{user?.type === "ORGANIZER" && (
-								<Link
-									href="/admin"
-									className="text-xs font-semibold text-accent-blue hover:underline mr-2"
-								>
-									Admin Kontrolcenter
-								</Link>
-							)}
-
 							<button
 								type="button"
 								onClick={handleLogout}
-								className="flex items-center gap-1.5 text-xs text-secondary hover:text-danger transition px-3 py-1.5 rounded-xl hover:bg-background"
+								className="text-xs font-semibold text-secondary hover:text-danger px-3 py-1.5 rounded-lg transition"
 							>
-								<IconLogout size={15} />
-								<span className="hidden sm:inline">Log ud</span>
+								Log ud
 							</button>
 						</div>
 					</header>
@@ -403,10 +301,10 @@ export default function StationPage() {
 								</div>
 								<div>
 									<h1 className="text-3xl font-bold tracking-tight">
-										{activeStation?.name || "Værksted"}
+										{currentStation?.name || "Værksted"}
 									</h1>
 									<p className="mt-1 text-sm text-secondary">
-										Registrer tider for holdene på denne post
+										{currentStation?.description || "Registrer holdenes gennemførselstider"}
 									</p>
 								</div>
 							</div>
@@ -416,19 +314,13 @@ export default function StationPage() {
 						<div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
 							<StatCard
 								title="Klasse"
-								value={classData?.name || "Ingen klasse"}
-								description={
-									classData
-										? `${classData.school}${
-												classData.teacherName ? ` · Lærer: ${classData.teacherName}` : ""
-										  }`
-										: "Ikke tilgængelig"
-								}
+								value={selectedClass?.name || "Ikke tilgængelig"}
+								description={selectedClass?.teacherName || selectedClass?.school || "Ingen lærer angivet"}
 							/>
 							<StatCard
 								title="Hold"
-								value={`${completedTeams.length} / ${classTeams.length}`}
-								description="Tider registreret i denne klasse"
+								value={`${completed.length} / ${teamTimes.length}`}
+								description="Tider registreret"
 							/>
 						</div>
 
@@ -440,104 +332,85 @@ export default function StationPage() {
 									<div>
 										<h2 className="font-bold">Hold & tider</h2>
 										<p className="mt-1 text-xs text-secondary">
-											Registrer den tid hvert hold bruger på posten
+											Registrer den tid hvert hold bruger på værkstedet
 										</p>
 									</div>
-									<div className="rounded-lg bg-accent-blue-background px-3 py-2 text-xs font-semibold text-accent-blue">
-										{activeStation?.name || "POST"}
+									<div className="rounded-lg bg-accent-blue-background px-3 py-2 text-xs font-bold uppercase">
+										{currentStation?.name || "POST"}
 									</div>
 								</div>
 
 								<div className="divide-y divide-border">
 									{loading ? (
-										<div className="p-8 text-center text-secondary">
-											<IconLoader2 size={24} className="animate-spin mx-auto mb-2" />
-											<span>Henter data...</span>
-										</div>
-									) : classTeams.length === 0 ? (
-										<div className="p-8 text-center text-secondary">
-											Ingen hold fundet for denne klasse.
+										<div className="p-6 text-center text-secondary">Henter data...</div>
+									) : teamTimes.length === 0 ? (
+										<div className="p-6 text-center text-secondary">
+											Ingen hold fundet i denne klasse.
 										</div>
 									) : (
-										classTeams.map((team) => {
-											const record = teamTimeMap.get(team.id);
-											const hasTime = !!record;
-
-											return (
-												<div
-													key={team.id}
-													className="flex flex-col gap-4 px-6 py-5 transition hover:bg-primary/5 sm:flex-row sm:items-center sm:justify-between"
-												>
-													{/* TEAM */}
-													<div className="flex items-center gap-4">
-														<div className="flex h-11 w-11 items-center justify-center rounded-xl bg-id-nr-background text-sm font-bold text-id-nr">
-															{team.id}
-														</div>
-														<div>
-															<div className="font-semibold">{team.name}</div>
-															<div className="mt-1 text-xs text-secondary">
-																{hasTime
-																	? "Tid registreret"
-																	: "Ingen tid registreret"}
-															</div>
-														</div>
+										teamTimes.map((team) => (
+											<div
+												key={team.id}
+												className="flex flex-col gap-4 px-6 py-5 transition hover:bg-primary/60 sm:flex-row sm:items-center sm:justify-between"
+											>
+												{/* TEAM */}
+												<div className="flex items-center gap-4">
+													<div className="flex h-11 w-11 items-center justify-center rounded-xl bg-id-nr-background text-sm font-bold text-id-nr">
+														{team.id}
 													</div>
-
-													{/* TIME */}
-													<div className="flex items-center gap-3">
-														{hasTime ? (
-															<>
-																<div
-																	className="rounded-xl border border-green-dark bg-success-background px-5 py-3 font-mono text-lg font-bold text-success cursor-pointer"
-																	onClick={() =>
-																		updateTimeDraft(
-																			team.id,
-																			secondsToTime(record.timeSeconds)
-																		)
-																	}
-																	title="Klik for at redigere"
-																>
-																	{secondsToTime(record.timeSeconds)}
-																</div>
-
-																<button
-																	type="button"
-																	onClick={() => deleteTime(team.id)}
-																	className="flex h-10 w-10 items-center justify-center rounded-lg bg-danger-background text-danger transition hover:bg-danger hover:text-primary"
-																	title="Slet tid"
-																>
-																	×
-																</button>
-															</>
-														) : (
-															<div className="flex items-center gap-2">
-																<input
-																	type="text"
-																	placeholder="MM:SS"
-																	value={draftTimes[team.id] ?? ""}
-																	maxLength={5}
-																	onChange={(e) =>
-																		updateTimeDraft(team.id, e.target.value)
-																	}
-																	onKeyDown={(e) => {
-																		if (e.key === "Enter") saveTime(team.id);
-																	}}
-																	className="w-28 rounded-xl border border-border bg-background px-4 py-3 text-center font-mono text-lg text-primary outline-none transition placeholder:text-[#525977] focus:border-green"
-																/>
-
-																<button
-																	type="button"
-																	onClick={() => saveTime(team.id)}
-																	className="rounded-xl bg-green-light px-4 py-3 font-semibold text-green-dark transition hover:bg-hover-bg"
-																>
-																	Gem
-																</button>
-															</div>
-														)}
+													<div>
+														<div className="font-semibold">{team.name}</div>
+														<div className="mt-1 text-xs text-secondary">
+															{team.time ? "Tid registreret" : "Ingen tid registreret"}
+														</div>
 													</div>
 												</div>
-											);
-										})
+
+												{/* TIME */}
+												<div className="flex items-center gap-3">
+													{team.time ? (
+														<>
+															<div
+																className="rounded-xl border border-green-dark bg-success-background px-5 py-3 font-mono text-lg font-bold text-success cursor-pointer"
+																onClick={() => updateTime(team.id, team.time)}
+															>
+																{team.time}
+															</div>
+
+															<button
+																onClick={() => deleteTime(team.id)}
+																className="flex h-10 w-10 items-center justify-center rounded-lg bg-danger-background text-danger transition hover:bg-danger hover:text-primary"
+																title="Slet tid"
+															>
+																×
+															</button>
+														</>
+													) : (
+														<div className="flex items-center gap-2">
+															<input
+																type="text"
+																placeholder="MM:SS"
+																value={draftTimes[team.id] ?? ""}
+																maxLength={5}
+																onChange={(e) => updateTime(team.id, e.target.value)}
+																onKeyDown={(e) => {
+																	if (e.key === "Enter") saveTime(team.id);
+																}}
+																className="w-28 rounded-xl border border-border bg-background px-4 py-3 text-center font-mono text-lg text-primary outline-none transition placeholder:text-[#525977] focus:border-green"
+															/>
+
+															<button
+																type="button"
+																onClick={() => saveTime(team.id)}
+																className="rounded-xl bg-green-light px-4 py-3 font-semibold text-green-dark transition hover:bg-hover-bg"
+															>
+																Gem
+															</button>
+														</div>
+													)}
+												</div>
+											</div>
+										))
 									)}
 								</div>
 							</section>
@@ -551,7 +424,7 @@ export default function StationPage() {
 												Klassens Bedste hold resultat
 											</div>
 											<div className="mt-1 text-lg font-bold">
-												{activeStation?.name || "Post"}
+												{currentStation?.name || "Post"}
 											</div>
 										</div>
 										<div className="flex h-11 w-11 items-center justify-center rounded-xl bg-warning-background text-xl">
@@ -559,10 +432,10 @@ export default function StationPage() {
 										</div>
 									</div>
 									<div className="text-4xl font-black text-warning">
-										{bestTeamRecord?.time || "--:--"}
+										{bestTime?.time || "--:--"}
 									</div>
 									<div className="mt-2 text-sm text-secondary">
-										{bestTeamRecord?.name || "Ingen registreret endnu"}
+										{bestTime?.name || "Ingen registreret endnu"}
 									</div>
 								</div>
 
@@ -571,7 +444,7 @@ export default function StationPage() {
 										<h3 className="font-bold">Om posten</h3>
 									</div>
 									<p className="text-sm leading-6 text-secondary">
-										{activeStation?.description ||
+										{currentStation?.description ||
 											"På værkstedet skal eleverne gennemføre opgaven hurtigst muligt. Registrer tiden efter hvert hold har afsluttet posten."}
 									</p>
 								</div>
@@ -582,18 +455,16 @@ export default function StationPage() {
 						{eventClasses.length > 1 && (
 							<div className="mt-6 flex flex-col justify-between gap-3 sm:flex-row">
 								<button
-									type="button"
-									disabled={currentClassIndex <= 0}
-									onClick={handlePrevClass}
-									className="rounded-xl border border-border bg-box-background px-5 py-3 text-sm font-semibold text-secondary transition hover:border-green hover:text-primary disabled:opacity-40 disabled:hover:border-border disabled:hover:text-secondary"
+									className="rounded-xl border border-border bg-box-background px-5 py-3 text-sm font-semibold text-secondary transition hover:border-green hover:text-primary disabled:opacity-40"
+									disabled={classIndex <= 0}
+									onClick={() => setClassIndex((i) => Math.max(0, i - 1))}
 								>
 									← Forrige klasse
 								</button>
 								<button
-									type="button"
-									disabled={currentClassIndex >= eventClasses.length - 1}
-									onClick={handleNextClass}
-									className="rounded-xl border border-border bg-box-background px-5 py-3 text-sm font-semibold text-secondary transition hover:border-green hover:text-primary disabled:opacity-40 disabled:hover:border-border disabled:hover:text-secondary"
+									className="rounded-xl border border-border bg-box-background px-5 py-3 text-sm font-semibold text-secondary transition hover:border-green hover:text-primary disabled:opacity-40"
+									disabled={classIndex >= eventClasses.length - 1}
+									onClick={() => setClassIndex((i) => Math.min(eventClasses.length - 1, i + 1))}
 								>
 									Næste klasse →
 								</button>

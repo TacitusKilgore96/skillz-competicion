@@ -3,12 +3,20 @@
     {
       "id": 0,
       "title": "Event Title",
-      "date": "2023-09-20"
+      "date": "2023-09-20",
+      "status": "FINISHED",
+      "startedAt": "2026-08-27T22:56:06.118Z",
+      "endedAt": "2026-08-27T22:58:04.899Z",
+      "isConfirmedOver": true
     },
     {
       "id": 1,
       "title": "DM i Skills 2024",
-      "date": "2024-04-18"
+      "date": "2024-04-18",
+      "status": "CREATED",
+      "startedAt": null,
+      "endedAt": null,
+      "isConfirmedOver": false
     },
     {
       "id": 2,
@@ -289,6 +297,14 @@
       "teamId": 1,
       "timeSeconds": 178,
       "completedAt": "2024-04-18T10:30:00.000Z"
+    },
+    {
+      "id": 2,
+      "stationId": 0,
+      "teamId": 2,
+      "eventId": 0,
+      "timeSeconds": 60,
+      "completedAt": "2026-08-27T22:57:30.316Z"
     }
   ]
 }

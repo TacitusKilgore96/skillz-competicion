@@ -1,20 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import {
-	IconLogout,
-	IconTrophy,
-	IconClock,
-	IconLoader2,
-	IconTool,
-	IconUsers,
-	IconSchool,
-	IconCheck,
-	IconX,
-	IconChartBar,
-} from "@tabler/icons-react";
 import {
 	getEvents,
 	getStations,
@@ -22,11 +8,24 @@ import {
 	getTeams,
 	getStationTimes,
 } from "@/libs/API";
-import { getCurrentUser, logoutUser, AuthUser } from "@/libs/auth";
+import { getCurrentUser, getCachedUser, logoutUser, AuthUser } from "@/libs/auth";
 import { StationModel, StationTimeModel } from "@/models/StationModel";
 import { ClassModel } from "@/models/ClassModel";
 import { TeamModel } from "@/models/TeamModel";
 import { EventModel } from "@/models/EventModel";
+
+const teamBadgeIcons: Record<number, string> = {
+	1: "/images/mortar-pestle-solid-full.svg",
+	2: "/images/camera-regular-full.svg",
+	3: "/images/hammer-solid-full.svg",
+	4: "/images/gear-solid-full.svg",
+	5: "/images/briefcase-medical-solid-full.svg",
+	6: "/images/laptop-solid-full.svg",
+	7: "/images/pencil-solid-full.svg",
+	8: "/images/people-group-solid-full.svg",
+	9: "/images/leaf-solid-full.svg",
+	10: "/images/lightbulb-solid-full.svg",
+};
 
 const formatDuration = (totalSeconds: number): string => {
 	if (isNaN(totalSeconds) || totalSeconds <= 0) return "--:--";
@@ -36,10 +35,9 @@ const formatDuration = (totalSeconds: number): string => {
 };
 
 export default function TeamPage() {
-	const router = useRouter();
-
-	const [user, setUser] = useState<AuthUser | null>(null);
-	const [authChecking, setAuthChecking] = useState(true);
+	const cached = getCachedUser();
+	const [user, setUser] = useState<AuthUser | null>(cached ?? null);
+	const [authChecking, setAuthChecking] = useState<boolean>(cached === undefined);
 
 	const [events, setEvents] = useState<EventModel[]>([]);
 	const [stations, setStations] = useState<StationModel[]>([]);
@@ -66,14 +64,14 @@ export default function TeamPage() {
 	// 2. Fetch Data
 	const fetchData = async () => {
 		try {
-			setLoading(true);
-			const [eventsData, stationsData, classesData, teamsData, timesData] = await Promise.all([
-				getEvents(),
-				getStations(),
-				getClasses(),
-				getTeams(),
-				getStationTimes(),
-			]);
+			const [eventsData, stationsData, classesData, teamsData, timesData] =
+				await Promise.all([
+					getEvents(),
+					getStations(),
+					getClasses(),
+					getTeams(),
+					getStationTimes(),
+				]);
 
 			setEvents(eventsData);
 			setStations(stationsData);
@@ -81,7 +79,7 @@ export default function TeamPage() {
 			setTeams(teamsData);
 			setStationTimes(timesData);
 		} catch (err) {
-			console.error("Fejl ved indlæsning af holddata:", err);
+			console.error("Fejl ved hentning af data:", err);
 		} finally {
 			setLoading(false);
 		}
@@ -90,6 +88,8 @@ export default function TeamPage() {
 	useEffect(() => {
 		if (user) {
 			fetchData();
+			const interval = setInterval(fetchData, 4000);
+			return () => clearInterval(interval);
 		}
 	}, [user]);
 
@@ -98,64 +98,55 @@ export default function TeamPage() {
 		window.location.href = "/login";
 	};
 
-	// Determine active team
-	const activeTeam = useMemo(() => {
+	// Identify active team & event
+	const currentTeam = useMemo(() => {
 		if (!user) return null;
 		if (user.teamId !== undefined) {
-			return teams.find((t) => t.id === user.teamId) || teams[0] || null;
+			return teams.find((t) => t.id === user.teamId) || null;
 		}
-		// If organizer, show first team or default
 		return teams[0] || null;
 	}, [user, teams]);
 
-	// Active class & event
-	const activeClass = useMemo(() => {
-		if (!activeTeam) return null;
-		return classes.find((c) => c.id === activeTeam.classId) || null;
-	}, [activeTeam, classes]);
+	const currentClass = useMemo(() => {
+		if (!currentTeam) return null;
+		return classes.find((c) => c.id === currentTeam.classId) || null;
+	}, [currentTeam, classes]);
 
-	const activeEvent = useMemo(() => {
-		if (!activeTeam) return null;
-		return events.find((e) => e.id === activeTeam.eventId) || null;
-	}, [activeTeam, events]);
-
-	// Stations for this event
-	const eventStations = useMemo(() => {
-		if (!activeTeam) return [];
-		return stations.filter((s) => s.eventId === activeTeam.eventId);
-	}, [activeTeam, stations]);
-
-	// Station times for this team
-	const teamStationTimes = useMemo(() => {
-		if (!activeTeam) return [];
-		return stationTimes.filter((st) => st.teamId === activeTeam.id);
-	}, [activeTeam, stationTimes]);
-
-	const teamTimeByStationMap = useMemo(() => {
-		const map = new Map<number, StationTimeModel>();
-		for (const st of teamStationTimes) {
-			map.set(st.stationId, st);
+	const currentEvent = useMemo(() => {
+		if (!currentTeam) {
+			return events.find((e) => e.status === "RUNNING") || events[0] || null;
 		}
-		return map;
-	}, [teamStationTimes]);
+		return events.find((e) => e.id === currentTeam.eventId) || events[0] || null;
+	}, [currentTeam, events]);
 
-	// Metrics calculations
-	const visitedStationsCount = teamStationTimes.length;
-	const totalSeconds = teamStationTimes.reduce((acc, st) => acc + st.timeSeconds, 0);
-	const averageDurationSeconds =
-		visitedStationsCount > 0 ? Math.round(totalSeconds / visitedStationsCount) : 0;
-	const bestDurationSeconds =
-		visitedStationsCount > 0
-			? Math.min(...teamStationTimes.map((st) => st.timeSeconds))
-			: 0;
+	const eventStations = useMemo(() => {
+		if (!currentEvent) return [];
+		return stations.filter((s) => s.eventId === currentEvent.id);
+	}, [stations, currentEvent]);
+
+	// Team recorded times
+	const myTimes = useMemo(() => {
+		if (!currentTeam) return [];
+		return stationTimes.filter((st) => st.teamId === currentTeam.id);
+	}, [stationTimes, currentTeam]);
+
+	const totalSeconds = useMemo(() => {
+		return myTimes.reduce((acc, t) => acc + t.timeSeconds, 0);
+	}, [myTimes]);
+
+	const averageSeconds = useMemo(() => {
+		return myTimes.length > 0 ? Math.round(totalSeconds / myTimes.length) : 0;
+	}, [myTimes, totalSeconds]);
+
+	const bestDuration = useMemo(() => {
+		if (myTimes.length === 0) return 0;
+		return Math.min(...myTimes.map((t) => t.timeSeconds));
+	}, [myTimes]);
+
+	const visitedCount = myTimes.length;
 
 	if (authChecking) {
-		return (
-			<div className="h-screen w-screen bg-background flex flex-col items-center justify-center text-primary gap-3">
-				<IconLoader2 size={32} className="animate-spin text-primary/50" />
-				<p className="text-xs text-secondary font-medium">Indlæser holddata...</p>
-			</div>
-		);
+		return null;
 	}
 
 	return (
@@ -167,33 +158,25 @@ export default function TeamPage() {
 					<header className="flex h-18.5 items-center justify-between border-b border-border bg-box-background/80 px-5 md:px-9">
 						<div className="flex items-center gap-3">
 							<div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-light font-bold text-green-dark">
-								{activeTeam?.name?.charAt(0).toUpperCase() || "H"}
+								{currentTeam?.name ? currentTeam.name.charAt(0).toUpperCase() : "H"}
 							</div>
-							<div className="text-left">
-								<div className="text-sm font-semibold">{activeTeam?.name || "Hold"}</div>
+							<div className="hidden text-left sm:block">
+								<div className="text-sm font-semibold">
+									{currentTeam?.name || "Hold"}
+								</div>
 								<div className="text-xs text-secondary">
-									{activeClass?.name} · {activeClass?.school}
+									{currentClass?.name ? `${currentClass.name} (${currentClass.school})` : user?.username}
 								</div>
 							</div>
 						</div>
 
 						<div className="flex items-center gap-3">
-							{user?.type === "ORGANIZER" && (
-								<Link
-									href="/admin"
-									className="text-xs font-semibold text-accent-blue hover:underline mr-2"
-								>
-									Admin Kontrolcenter
-								</Link>
-							)}
-
 							<button
 								type="button"
 								onClick={handleLogout}
-								className="flex items-center gap-1.5 text-xs text-secondary hover:text-danger transition px-3 py-1.5 rounded-xl hover:bg-background"
+								className="text-xs font-semibold text-secondary hover:text-danger px-3 py-1.5 rounded-lg transition"
 							>
-								<IconLogout size={15} />
-								<span className="hidden sm:inline">Log ud</span>
+								Log ud
 							</button>
 						</div>
 					</header>
@@ -208,10 +191,10 @@ export default function TeamPage() {
 								</div>
 								<div>
 									<h1 className="text-3xl font-bold tracking-tight">
-										{activeTeam?.name || "Hold"}
+										{currentTeam?.name || "Hold"}
 									</h1>
 									<p className="mt-1 text-sm text-secondary">
-										{activeEvent?.title || "Konkurrence"} · Overblik over jeres resultater
+										Overblik over jeres resultater
 									</p>
 								</div>
 							</div>
@@ -226,19 +209,19 @@ export default function TeamPage() {
 							/>
 							<StatCard
 								title="Gennemsnit Pr. Post"
-								value={formatDuration(averageDurationSeconds)}
+								value={formatDuration(averageSeconds)}
 								description="mm:ss"
 							/>
 							<StatCard
 								title="Bedste Tid"
-								value={visitedStationsCount > 0 ? formatDuration(bestDurationSeconds) : "--:--"}
+								value={myTimes.length > 0 ? formatDuration(bestDuration) : "--:--"}
 								description="mm:ss"
 							/>
 						</div>
 
 						{/* MAIN GRID */}
 						<div className="grid gap-6 xl:grid-cols-[1fr_320px]">
-							{/* STATIONS / RESULTS */}
+							{/* TEAMS / STATIONS */}
 							<section className="overflow-hidden rounded-2xl border border-border bg-box-background">
 								<div className="flex items-center justify-between border-b border-border px-6 py-5">
 									<div>
@@ -247,73 +230,65 @@ export default function TeamPage() {
 											Her kan I se jeres tider på alle poster
 										</p>
 									</div>
-									<div className="text-xs font-semibold text-secondary">
-										{visitedStationsCount} / {eventStations.length} poster
-									</div>
 								</div>
 
-								<div className="divide-y divide-border overflow-y-auto max-h-[500px]">
+								<div className="divide-y divide-border overflow-y-auto max-h-120">
 									{loading ? (
-										<div className="p-8 text-center text-secondary">
-											<IconLoader2 size={24} className="animate-spin mx-auto mb-2" />
-											<span>Henter resultater...</span>
-										</div>
+										<div className="p-6 text-center text-secondary">Henter poster...</div>
 									) : eventStations.length === 0 ? (
-										<div className="p-8 text-center text-secondary">
-											Ingen poster fundet for denne begivenhed.
-										</div>
+										<div className="p-6 text-center text-secondary">Ingen poster oprettet endnu.</div>
 									) : (
-										eventStations.map((station) => {
-											const record = teamTimeByStationMap.get(station.id);
-											const isVisited = !!record;
+										eventStations.map((station, index) => {
+											const timeRecord = myTimes.find((st) => st.stationId === station.id);
+											const isVisited = Boolean(timeRecord);
+											const stationNumber = index + 1;
+											const iconSrc = teamBadgeIcons[stationNumber] || teamBadgeIcons[(stationNumber % 10) + 1];
 
 											return (
 												<div
 													key={station.id}
-													className="flex flex-col gap-4 px-6 py-5 transition hover:bg-primary/5 sm:flex-row sm:items-center sm:justify-between"
+													className="flex flex-col gap-4 px-6 py-5 transition hover:bg-primary/10 sm:flex-row sm:items-center sm:justify-between"
 												>
 													{/* STATION */}
 													<div className="flex items-center gap-4">
 														<div className="min-w-8 text-left text-xl font-bold text-primary">
-															#{station.id}
+															{stationNumber}
 														</div>
+
 														<div className="flex h-11 w-11 items-center justify-center rounded-xl bg-id-nr-background text-sm font-bold text-id-nr">
-															<IconTool size={20} />
+															{iconSrc ? (
+																<img
+																	src={iconSrc}
+																	alt={`Post ${stationNumber}`}
+																	className="h-7 w-7 object-contain"
+																/>
+															) : (
+																stationNumber
+															)}
 														</div>
+
 														<div>
-															<div className="font-semibold text-primary">{station.name}</div>
+															<div className="font-semibold">{station.name}</div>
 															<div className="mt-1 text-xs text-secondary">
-																{isVisited
-																	? "Tid registreret på stationen"
-																	: "Ikke gennemført endnu"}
+																{isVisited ? "Besøgt stationen" : "Har ikke besøgt stationen"}
 															</div>
 														</div>
 													</div>
 
-													{/* STATUS & TIME */}
+													{/* STATUS */}
 													<div className="flex items-center gap-3">
 														<div className="min-w-[72px] text-left font-mono text-base font-bold text-primary">
-															{isVisited ? formatDuration(record.timeSeconds) : "--:--"}
+															{isVisited ? formatDuration(timeRecord?.timeSeconds || 0) : "--:--"}
 														</div>
 
 														<div
 															className={
 																isVisited
-																	? "rounded-xl border border-green-dark bg-success-background px-4 py-2 text-xs font-semibold text-success flex items-center gap-1"
-																	: "rounded-xl border border-border bg-background px-4 py-2 text-xs font-semibold text-secondary flex items-center gap-1"
+																	? "rounded-xl border border-green-dark bg-success-background px-4 py-2.5 text-sm font-semibold text-success"
+																	: "rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-semibold text-secondary"
 															}
 														>
-															{isVisited ? (
-																<>
-																	<IconCheck size={14} />
-																	<span>Gennemført</span>
-																</>
-															) : (
-																<>
-																	<IconX size={14} />
-																	<span>Afventer</span>
-																</>
-															)}
+															{isVisited ? "Besøgt" : "Ikke besøgt"}
 														</div>
 													</div>
 												</div>
@@ -330,31 +305,30 @@ export default function TeamPage() {
 									<div className="mb-5 flex items-center justify-between">
 										<div>
 											<div className="text-xs font-semibold uppercase tracking-wider text-secondary">
-												Besøgsstatus
+												Besøgstatus
 											</div>
 											<div className="mt-1 text-lg font-bold">Poster</div>
 										</div>
-										<div className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-dark text-xl">
+										<div className="flex h-11 w-11 items-center justify-center rounded-xl bg-success-background text-success text-xl">
 											✅
 										</div>
 									</div>
 
 									<div className="text-4xl font-black text-warning">
-										{visitedStationsCount}
+										{visitedCount}
 									</div>
 
 									<div className="mt-2 text-sm text-secondary">
-										{visitedStationsCount} / {eventStations.length} Poster er gennemført
+										{visitedCount} / {eventStations.length} Poster er besøgt
 									</div>
 								</div>
 
 								<div className="rounded-2xl border border-border bg-box-background p-6">
 									<div className="mb-3 flex items-center gap-3">
-										<h3 className="font-bold">Om jeres tider</h3>
+										<h3 className="font-bold">Om posten</h3>
 									</div>
 									<p className="text-sm leading-6 text-secondary">
-										Postvagterne registrerer automatisk jeres tid, når I afslutter hver post.
-										I kan følge jeres samlede tid og status her.
+										Her kan I følge jeres fremskridt. Stationernes vagter registrerer jeres tider så snart I gennemfører en opgave.
 									</p>
 								</div>
 							</aside>
@@ -386,6 +360,7 @@ function StatCard({
 			<div className="text-xs font-semibold uppercase tracking-wider text-secondary">
 				{title}
 			</div>
+
 			<div
 				className={`mt-2 text-2xl font-black ${
 					highlight ? "text-warning" : "text-primary"
@@ -393,6 +368,7 @@ function StatCard({
 			>
 				{value}
 			</div>
+
 			<div className="mt-1 text-xs text-secondary">{description}</div>
 		</div>
 	);
