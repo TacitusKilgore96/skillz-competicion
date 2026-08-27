@@ -153,7 +153,7 @@ export default function StationPage() {
 
     try {
       const res = await fetch(`${API_BASE_URL}/results`, {
-        method: "PUT",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           team_id: id,
@@ -288,7 +288,7 @@ export default function StationPage() {
                     <div className="p-6 text-center text-secondary">Henter data...</div>
                   ) : (
                     teamTimes
-                    .filter(team=> team.station_id=16)
+                    .filter(team=> team.station_id=15)
                     .map((team) => (
                       <div
                         key={team.id}
