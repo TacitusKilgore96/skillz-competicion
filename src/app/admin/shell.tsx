@@ -3,14 +3,14 @@
 import React, {useEffect, useState} from "react";
 import Link from "next/link";
 import {cn} from "tailwind-variants";
+import {usePathname} from "next/navigation";
 
 interface ShellProps {
 	pageTitle: string;
 	children: React.ReactNode;
-	currentPath?: string;
 }
 
-export function AdminShell({pageTitle, children, currentPath}: ShellProps) {
+export function EventShell({pageTitle, children}: ShellProps) {
 	const [now, setNow] = useState<Date>(() => new Date());
 
 	useEffect(() => {
@@ -39,13 +39,12 @@ export function AdminShell({pageTitle, children, currentPath}: ShellProps) {
 				</div>
 
 				<nav className={"p-4 gap-2 text-center flex-1"}>
-					<PathLink label="Oversigt" targetPath="/admin" currentPath={currentPath}/>
-					<PathLink label="Begivenheder" targetPath="/admin/events" currentPath={currentPath}/>
-					<PathLink label="Skoler" targetPath="/admin/schools" currentPath={currentPath}/>
-					<PathLink label="Klasser" targetPath="/admin/classes" currentPath={currentPath}/>
-					<PathLink label="Hold" targetPath="/admin/teams" currentPath={currentPath}/>
-					<PathLink label="Stationer" targetPath="/admin/stations" currentPath={currentPath}/>
-					<PathLink label="Accounts" targetPath="/admin/accounts" currentPath={currentPath}/>
+					<PathLink label="Oversigt" href="" pathRegex={/^$/}/>
+					<PathLink label="Skoler" href="schools" pathRegex={/^schools/}/>
+					<PathLink label="Klasser" href="classes" pathRegex={/^classes/}/>
+					<PathLink label="Hold" href="teams" pathRegex={/^teams/}/>
+					<PathLink label="Stationer" href="stations" pathRegex={/^stations/}/>
+					<PathLink label="Accounts" href="accounts" pathRegex={/^accounts/}/>
 				</nav>
 			</aside>
 
@@ -69,15 +68,17 @@ export function AdminShell({pageTitle, children, currentPath}: ShellProps) {
 
 interface PathLinkProps {
 	label: string;
-	targetPath: string;
-	currentPath?: string;
+	href: string;
+	pathRegex: RegExp;
 }
 
-function PathLink({label, targetPath, currentPath}: PathLinkProps) {
-	const isActive = targetPath === currentPath;
+function PathLink({label, href, pathRegex}: PathLinkProps) {
+	const pathname = usePathname();
+	const trimmedPath = pathname.replace(/^\/admin\/[0-9]+/, "")
+	const isActive = trimmedPath.match(pathRegex);
 
 	return (
-		<Link href={targetPath} className={cn(
+		<Link href={href} className={cn(
 			"text-white hover:text-slate-800 hover:bg-hover p-2  rounded-lg transition-colors uppercase block my-1",
 			isActive ? "font-bold" : ""
 		)}>

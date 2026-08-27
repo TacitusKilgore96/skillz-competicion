@@ -1,6 +1,5 @@
 interface EventModel {
 	id: number;
-	name: string;
+	title: string;
 	date: string;
-	status: string;
 }
