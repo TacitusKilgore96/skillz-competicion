@@ -1,34 +1,10 @@
 {
   "app": {
-    "[project]/src/app/(main)/home/page": [
-      "static/media/caa3a2e1cccd8315-s.p.0wgildi0cnwt9.woff2",
-      "static/media/797e433ab948586e-s.p.0r6juujl39pe6.woff2"
-    ],
-    "[project]/src/app/(main)/login/page": [
-      "static/media/caa3a2e1cccd8315-s.p.0wgildi0cnwt9.woff2",
-      "static/media/797e433ab948586e-s.p.0r6juujl39pe6.woff2"
-    ],
     "[project]/src/app/(main)/page": [
       "static/media/caa3a2e1cccd8315-s.p.0wgildi0cnwt9.woff2",
       "static/media/797e433ab948586e-s.p.0r6juujl39pe6.woff2"
     ],
-    "[project]/src/app/(main)/results/page": [
-      "static/media/caa3a2e1cccd8315-s.p.0wgildi0cnwt9.woff2",
-      "static/media/797e433ab948586e-s.p.0r6juujl39pe6.woff2"
-    ],
     "[project]/src/app/(main)/station/page": [
-      "static/media/caa3a2e1cccd8315-s.p.0wgildi0cnwt9.woff2",
-      "static/media/797e433ab948586e-s.p.0r6juujl39pe6.woff2"
-    ],
-    "[project]/src/app/(main)/teacher/page": [
-      "static/media/caa3a2e1cccd8315-s.p.0wgildi0cnwt9.woff2",
-      "static/media/797e433ab948586e-s.p.0r6juujl39pe6.woff2"
-    ],
-    "[project]/src/app/(main)/team/page": [
-      "static/media/caa3a2e1cccd8315-s.p.0wgildi0cnwt9.woff2",
-      "static/media/797e433ab948586e-s.p.0r6juujl39pe6.woff2"
-    ],
-    "[project]/src/app/admin/page": [
       "static/media/caa3a2e1cccd8315-s.p.0wgildi0cnwt9.woff2",
       "static/media/797e433ab948586e-s.p.0r6juujl39pe6.woff2"
     ]
