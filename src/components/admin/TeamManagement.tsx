@@ -15,18 +15,18 @@ import {
 	IconCheck,
 	IconUsers,
 	IconSchool,
-	IconBuildingCommunity,
 	IconKey,
 	IconEye,
 	IconEyeOff,
 	IconCopy,
-	IconSparkles,
+	IconShieldCheck,
+	IconClock,
 } from "@tabler/icons-react";
 import { button, iconButton } from "@/components/admin/Button";
 import textField from "@/components/admin/TextField";
 import card from "@/components/admin/Card";
 import SearchableSelect, { SearchableSelectOption } from "@/components/admin/SearchableSelect";
-import { TeamModel } from "@/models/TeamModel";
+import { TeamModel, CreateTeamDTO, UpdateTeamDTO } from "@/models/TeamModel";
 import { ClassModel } from "@/models/ClassModel";
 import { AccountModel } from "@/models/AccountModel";
 import {
@@ -52,10 +52,9 @@ export default function TeamManagement({
 	const router = useRouter();
 	const params = useParams();
 	const searchParams = useSearchParams();
-	const initialClassParam = searchParams.get("classId");
-
 	const activeEventId = eventId || params.eventId || "0";
 	const numEventId = Number(activeEventId);
+	const initialClassParam = searchParams.get("classId");
 
 	const [teams, setTeams] = useState<TeamModel[]>([]);
 	const [classes, setClasses] = useState<ClassModel[]>([]);
@@ -71,7 +70,7 @@ export default function TeamManagement({
 		initialClassParam ? Number(initialClassParam) : "ALL"
 	);
 
-	// Team Form states
+	// Form states
 	const [formName, setFormName] = useState("");
 	const [formClassId, setFormClassId] = useState<number>(-1);
 	const [formError, setFormError] = useState<string | null>(null);
@@ -97,8 +96,10 @@ export default function TeamManagement({
 		}, 3500);
 	};
 
-	const fetchData = async (selectTargetId?: number | null) => {
-		setLoading(true);
+	const fetchData = async (selectTargetId?: number | null, isInitial = false) => {
+		if (isInitial && teams.length === 0) {
+			setLoading(true);
+		}
 		try {
 			const [teamsData, classesData, accountsData] = await Promise.all([
 				getTeams({ eventId: numEventId }),
@@ -133,10 +134,18 @@ export default function TeamManagement({
 		}
 	};
 
+	// Initial fetch on mount or when active eventId changes
 	useEffect(() => {
-		fetchData(initialTeamId);
+		fetchData(initialTeamId, true);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [initialTeamId, numEventId]);
+	}, [numEventId]);
+
+	// Sync selectedId when initialTeamId changes externally without refetching full list
+	useEffect(() => {
+		if (initialTeamId !== undefined && initialTeamId !== null) {
+			setSelectedId(initialTeamId);
+		}
+	}, [initialTeamId]);
 
 	const selectedTeam = useMemo(() => {
 		return teams.find((t) => t.id === selectedId) || null;
@@ -168,25 +177,21 @@ export default function TeamManagement({
 	const classOptions = useMemo<SearchableSelectOption<number>[]>(() => {
 		return classes.map((cls) => ({
 			value: cls.id,
-			label: cls.name,
-			subLabel: `${cls.school}${cls.teacherName ? ` · ${cls.teacherName}` : ""}`,
+			label: `${cls.name} (${cls.school})`,
+			subLabel: cls.teacherName ? `Lærer: ${cls.teacherName}` : undefined,
 			icon: <IconSchool size={16} />,
 		}));
 	}, [classes]);
 
-	const classFilterOptions = useMemo<SearchableSelectOption<number | "ALL">[]>(() => {
+	const filterClassOptions = useMemo<SearchableSelectOption<number | "ALL">[]>(() => {
 		return [
-			{
-				value: "ALL",
-				label: "Alle klasser",
-				subLabel: `${teams.length} hold`,
-			},
+			{ value: "ALL", label: `Alle klasser (${teams.length} hold)` },
 			...classes.map((cls) => {
-				const count = teams.filter((t) => t.classId === cls.id).length;
+				const teamCount = teams.filter((t) => t.classId === cls.id).length;
 				return {
 					value: cls.id,
-					label: cls.name,
-					subLabel: `${cls.school} · ${count} hold`,
+					label: `${cls.name} · ${cls.school}`,
+					subLabel: `${teamCount} hold`,
 					icon: <IconSchool size={16} />,
 				};
 			}),
@@ -215,9 +220,7 @@ export default function TeamManagement({
 		setViewMode("VIEW");
 		setFormError(null);
 		setShowPassword(false);
-		startTransition(() => {
-			router.push(`/admin/${activeEventId}/teams/${t.id}`);
-		});
+		window.history.replaceState(null, "", `/admin/${activeEventId}/teams/${t.id}`);
 	};
 
 	const handleStartCreate = () => {
@@ -242,12 +245,6 @@ export default function TeamManagement({
 		setFormError(null);
 	};
 
-	const handleCopy = (text: string, fieldName: string) => {
-		navigator.clipboard.writeText(text);
-		setCopiedField(fieldName);
-		setTimeout(() => setCopiedField(null), 2000);
-	};
-
 	const handleSaveForm = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setFormError(null);
@@ -266,20 +263,22 @@ export default function TeamManagement({
 		setIsSubmitting(true);
 		try {
 			if (viewMode === "CREATE") {
-				const created = await createTeam({
+				const dto: CreateTeamDTO = {
 					eventId: numEventId,
 					classId: formClassId,
 					name: trimmedName,
-				});
+				};
+				const created = await createTeam(dto);
 				await fetchData(created.id);
 				setViewMode("VIEW");
 				showNotification(`Holdet '${created.name}' er oprettet med tilhørende konto!`);
-				router.push(`/admin/${activeEventId}/teams/${created.id}`);
+				window.history.replaceState(null, "", `/admin/${activeEventId}/teams/${created.id}`);
 			} else if (viewMode === "EDIT" && selectedTeam) {
-				const updated = await updateTeam(selectedTeam.id, {
-					classId: formClassId,
+				const dto: UpdateTeamDTO = {
 					name: trimmedName,
-				});
+					classId: formClassId,
+				};
+				const updated = await updateTeam(selectedTeam.id, dto);
 				await fetchData(updated.id);
 				setViewMode("VIEW");
 				showNotification(`Holdet '${updated.name}' er opdateret!`);
@@ -305,9 +304,9 @@ export default function TeamManagement({
 				const nextSelected = remaining.length > 0 ? remaining[0].id : null;
 				setSelectedId(nextSelected);
 				if (nextSelected !== null) {
-					router.push(`/admin/${activeEventId}/teams/${nextSelected}`);
+					window.history.replaceState(null, "", `/admin/${activeEventId}/teams/${nextSelected}`);
 				} else {
-					router.push(`/admin/${activeEventId}/teams`);
+					window.history.replaceState(null, "", `/admin/${activeEventId}/teams`);
 				}
 			}
 			await fetchData(selectedId === teamToDelete.id ? null : selectedId);
@@ -319,13 +318,19 @@ export default function TeamManagement({
 		}
 	};
 
+	const handleCopy = (text: string, fieldName: string) => {
+		navigator.clipboard.writeText(text);
+		setCopiedField(fieldName);
+		setTimeout(() => setCopiedField(null), 2000);
+	};
+
 	return (
 		<div className="flex h-full w-full bg-slate-50 relative overflow-hidden">
 			{/* Toast notification */}
 			{toast && (
 				<div
 					className={cn(
-						"absolute top-4 right-4 z-50 px-3.5 py-2 rounded-lg border text-sm font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-150",
+						"absolute top-4 right-4 z-50 px-3.5 py-2 rounded-lg border text-sm font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-150 shadow-sm",
 						toast.type === "success"
 							? "bg-slate-900 text-white border-slate-800"
 							: "bg-red-50 text-red-900 border-red-200"
@@ -352,7 +357,7 @@ export default function TeamManagement({
 						<input
 							type="search"
 							className={cn(textField(), "w-full pl-8 pr-2.5 py-1.5 text-xs")}
-							placeholder="Søg hold, klasse eller skole..."
+							placeholder="Søg hold eller klasse..."
 							value={searchQuery}
 							onChange={(e) => setSearchQuery(e.target.value)}
 						/>
@@ -369,25 +374,22 @@ export default function TeamManagement({
 					</button>
 				</div>
 
-				{/* Class Filter Dropdown using SearchableSelect */}
+				{/* Class filter dropdown */}
 				{classes.length > 0 && (
-					<div className="flex items-center gap-1.5">
-						<span className="text-[11px] font-semibold text-slate-500 shrink-0">
-							Klasse:
-						</span>
+					<div>
 						<SearchableSelect<number | "ALL">
 							value={classFilter}
-							onChange={(val) => setClassFilter(val)}
-							options={classFilterOptions}
-							placeholder="Vælg klasse..."
-							className="flex-1 text-xs"
+							onChange={(val) => setClassFilter(val || "ALL")}
+							options={filterClassOptions}
+							placeholder="Filtrer efter klasse..."
+							leftIcon={<IconSchool size={16} />}
 						/>
 					</div>
 				)}
 
 				{/* Teams List */}
 				<div className="flex-1 overflow-y-auto pr-0.5">
-					{loading ? (
+					{loading && teams.length === 0 ? (
 						<div className="flex flex-col items-center justify-center h-40 text-slate-400 gap-2">
 							<IconLoader2 size={20} className="animate-spin" />
 							<p className="text-xs">Henter hold...</p>
@@ -398,14 +400,14 @@ export default function TeamManagement({
 							<p className="text-xs font-medium text-slate-600">Ingen hold fundet</p>
 							<p className="text-[11px] text-slate-400 mt-0.5">
 								{teams.length === 0
-									? "Der er endnu ikke oprettet hold. Hold oprettes automatisk når en klasse oprettes."
-									: "Prøv en anden søgning eller filter."}
+									? "Der er endnu ikke oprettet hold til dette event."
+									: "Prøv et andet filter eller en anden søgning."}
 							</p>
 							<button
 								onClick={handleStartCreate}
 								className={cn(button(), "mt-2.5 text-xs py-1 px-2.5")}
 							>
-								<IconPlus size={14} /> Opret hold manuelt
+								<IconPlus size={14} /> Opret hold
 							</button>
 						</div>
 					) : (
@@ -442,25 +444,22 @@ export default function TeamManagement({
 														<span>{team.name}</span>
 														{!team.isConfigured && (
 															<span
-																title="Holdet har ikke tilpasset navn/billede endnu"
 																className={cn(
-																	"text-[10px] px-1 py-0.2 rounded font-normal shrink-0",
+																	"text-[9px] px-1 py-0.2 rounded font-normal uppercase",
 																	isSelected
 																		? "bg-slate-800 text-slate-300"
-																		: "bg-amber-50 text-amber-800 border border-amber-200/60"
+																		: "bg-slate-100 text-slate-600"
 																)}
 															>
 																Ny
 															</span>
 														)}
 													</div>
-													{cls && (
-														<div className="flex items-center gap-1 mt-0.5 text-[11px] opacity-60 truncate">
-															<span className="font-medium">{cls.name}</span>
-															<span>·</span>
-															<span className="truncate">{cls.school}</span>
-														</div>
-													)}
+													<div className="flex items-center gap-2 mt-0.5 text-[11px] opacity-60">
+														<span className="truncate">
+															{cls ? `${cls.name} · ${cls.school}` : `Klasse #${team.classId}`}
+														</span>
+													</div>
 												</div>
 											</div>
 
@@ -517,7 +516,7 @@ export default function TeamManagement({
 								<div>
 									<h2 className="text-lg font-bold text-slate-900">Opret nyt hold</h2>
 									<p className="text-xs text-slate-500 mt-0.5">
-										Opret et hold manuelt tilknyttet en klasse. Der genereres automatisk en fælleskonto til holdet.
+										Opret et enkelt hold manuelt til en eksisterende klasse. Der oprettes automatisk en tilknyttet brugerkonto.
 									</p>
 								</div>
 								<button
@@ -536,25 +535,6 @@ export default function TeamManagement({
 							)}
 
 							<form onSubmit={handleSaveForm} className="space-y-4">
-								{/* Choose Class using SearchableSelect */}
-								<div>
-									<label
-										htmlFor="new-team-class"
-										className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5"
-									>
-										Vælg Klasse & Skole *
-									</label>
-									<SearchableSelect<number>
-										id="new-team-class"
-										required
-										value={formClassId !== -1 ? formClassId : null}
-										onChange={(val) => setFormClassId(val)}
-										options={classOptions}
-										placeholder="Vælg eller søg klasse..."
-										leftIcon={<IconSchool size={16} />}
-									/>
-								</div>
-
 								{/* Team Name */}
 								<div>
 									<label
@@ -568,19 +548,44 @@ export default function TeamManagement({
 										type="text"
 										required
 										className={cn(textField(), "w-full py-2 px-3 text-sm")}
-										placeholder="f.eks. Hold 1, Hold Alpha, De Hurtige Hænder"
+										placeholder="f.eks. Hold 4 eller De Hurtige Murere"
 										value={formName}
 										onChange={(e) => setFormName(e.target.value)}
 									/>
 								</div>
 
-								{/* Auto account info notice */}
+								{/* Select Class with SearchableSelect */}
+								<div>
+									<label
+										htmlFor="new-team-class"
+										className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5"
+									>
+										Tilhørende Klasse *
+									</label>
+									{classes.length === 0 ? (
+										<p className="text-xs text-red-500">
+											Der er ingen klasser tilgængelige. Opret en klasse først under &quot;Klasser&quot;.
+										</p>
+									) : (
+										<SearchableSelect<number>
+											id="new-team-class"
+											required
+											value={formClassId !== -1 ? formClassId : null}
+											onChange={(val) => setFormClassId(val !== null ? val : -1)}
+											options={classOptions}
+											placeholder="Vælg klasse..."
+											leftIcon={<IconSchool size={16} />}
+										/>
+									)}
+								</div>
+
+								{/* Account Info Notice */}
 								<div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 text-xs flex items-start gap-2.5">
-									<IconSparkles size={16} className="text-slate-500 shrink-0 mt-0.5" />
+									<IconKey size={16} className="text-slate-500 shrink-0 mt-0.5" />
 									<div>
-										<p className="font-semibold text-slate-800">Automatisk Holdkonto</p>
+										<p className="font-semibold text-slate-800">Automatisk Hold-Login</p>
 										<p className="mt-0.5 text-slate-500">
-											Der oprettes automatisk en login-konto til holdet. Ved første login får holdet mulighed for at tilpasse deres endelige navn og billede.
+											Der oprettes automatisk en fælles brugerkonto til holdet. Ved første login kan eleverne selv vælge et holdnavn og avatar.
 										</p>
 									</div>
 								</div>
@@ -599,7 +604,7 @@ export default function TeamManagement({
 									</button>
 									<button
 										type="submit"
-										disabled={isSubmitting}
+										disabled={isSubmitting || classes.length === 0}
 										className={cn(
 											button(),
 											"px-5 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 border-transparent flex items-center gap-1.5"
@@ -639,25 +644,6 @@ export default function TeamManagement({
 							)}
 
 							<form onSubmit={handleSaveForm} className="space-y-4">
-								{/* Choose Class using SearchableSelect */}
-								<div>
-									<label
-										htmlFor="edit-team-class"
-										className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5"
-									>
-										Vælg Klasse & Skole *
-									</label>
-									<SearchableSelect<number>
-										id="edit-team-class"
-										required
-										value={formClassId}
-										onChange={(val) => setFormClassId(val)}
-										options={classOptions}
-										placeholder="Vælg eller søg klasse..."
-										leftIcon={<IconSchool size={16} />}
-									/>
-								</div>
-
 								{/* Team Name */}
 								<div>
 									<label
@@ -673,6 +659,25 @@ export default function TeamManagement({
 										className={cn(textField(), "w-full py-2 px-3 text-sm")}
 										value={formName}
 										onChange={(e) => setFormName(e.target.value)}
+									/>
+								</div>
+
+								{/* Change Class with SearchableSelect */}
+								<div>
+									<label
+										htmlFor="edit-team-class"
+										className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5"
+									>
+										Tilhørende Klasse *
+									</label>
+									<SearchableSelect<number>
+										id="edit-team-class"
+										required
+										value={formClassId !== -1 ? formClassId : null}
+										onChange={(val) => setFormClassId(val !== null ? val : -1)}
+										options={classOptions}
+										placeholder="Vælg klasse..."
+										leftIcon={<IconSchool size={16} />}
 									/>
 								</div>
 
@@ -706,11 +711,11 @@ export default function TeamManagement({
 				) : selectedTeam ? (
 					/* View Team Details */
 					<div className="max-w-2xl mx-auto space-y-4">
-						{/* Header Card */}
+						{/* Team Header Card */}
 						<div className={cn(card(), "p-5")}>
 							<div className="flex items-start justify-between">
 								<div className="flex items-center gap-3.5">
-									<div className="w-11 h-11 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-base shrink-0">
+									<div className="w-11 h-11 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center shrink-0 font-bold">
 										<IconUsers size={22} />
 									</div>
 									<div>
@@ -718,14 +723,27 @@ export default function TeamManagement({
 											<h2 className="text-xl font-bold text-slate-900">
 												{selectedTeam.name}
 											</h2>
-											{!selectedTeam.isConfigured && (
-												<span className="text-xs font-medium px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
-													<IconSparkles size={11} /> Afventer opsætning
-												</span>
-											)}
+											<span
+												className={cn(
+													"text-[10px] font-semibold px-2 py-0.5 rounded uppercase tracking-wider",
+													selectedTeam.isConfigured
+														? "bg-slate-100 text-slate-700"
+														: "bg-slate-100 text-slate-500"
+												)}
+											>
+												{selectedTeam.isConfigured ? "Klar" : "Afventer opsætning"}
+											</span>
 										</div>
-										<p className="text-xs text-slate-400 mt-0.5 font-mono">
-											Hold #{selectedTeam.id} · Event #{activeEventId}
+										<p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
+											{selectedClass ? (
+												<>
+													<span className="font-semibold text-slate-700">{selectedClass.name}</span>
+													<span>·</span>
+													<span>{selectedClass.school}</span>
+												</>
+											) : (
+												<span>Klasse #{selectedTeam.classId}</span>
+											)}
 										</p>
 									</div>
 								</div>
@@ -754,60 +772,17 @@ export default function TeamManagement({
 							</div>
 						</div>
 
-						{/* Class and School Card */}
-						{selectedClass && (
-							<div className={cn(card(), "p-5 space-y-3")}>
-								<div className="flex items-center justify-between">
-									<h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-										<IconSchool size={16} className="text-slate-400" />
-										<span>Klasse & Skole</span>
-									</h3>
-									<Link
-										href={`/admin/${activeEventId}/classes/${selectedClass.id}`}
-										className="text-xs font-medium text-slate-600 hover:text-slate-900 underline"
-									>
-										Gå til klasse
-									</Link>
-								</div>
-
-								<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-									<div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
-										<div className="text-[11px] text-slate-400 font-semibold uppercase">
-											Klasse
-										</div>
-										<div className="text-sm font-semibold text-slate-900 mt-0.5">
-											{selectedClass.name}
-										</div>
-										{selectedClass.teacherName && (
-											<div className="text-[11px] text-slate-500 mt-0.5">
-												Lærer: {selectedClass.teacherName}
-											</div>
-										)}
-									</div>
-									<div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
-										<div className="text-[11px] text-slate-400 font-semibold uppercase">
-											Skole
-										</div>
-										<div className="text-sm font-semibold text-slate-900 mt-0.5 flex items-center gap-1.5">
-											<IconBuildingCommunity size={16} className="text-slate-400" />
-											<span>{selectedClass.school}</span>
-										</div>
-									</div>
-								</div>
-							</div>
-						)}
-
-						{/* Linked Shared Account Card */}
+						{/* Team Account Credentials Card */}
 						{selectedAccount && (
 							<div className={cn(card(), "p-5 space-y-3")}>
 								<div className="flex items-center justify-between">
 									<div>
 										<h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
 											<IconKey size={16} className="text-slate-400" />
-											<span>Tilknyttet Hold-Login</span>
+											<span>Tilknyttet Holdkonto</span>
 										</h3>
 										<p className="text-[11px] text-slate-400 mt-0.5">
-											Fælles login-konto for holdet
+											Eleverne bruger dette login til at tilgå konkurrencesiden
 										</p>
 									</div>
 									<Link
@@ -859,11 +834,7 @@ export default function TeamManagement({
 													title={showPassword ? "Skjul kode" : "Vis kode"}
 													className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
 												>
-													{showPassword ? (
-														<IconEyeOff size={14} />
-													) : (
-														<IconEye size={14} />
-													)}
+													{showPassword ? <IconEyeOff size={14} /> : <IconEye size={14} />}
 												</button>
 												<button
 													type="button"
@@ -929,7 +900,7 @@ export default function TeamManagement({
 						<div className="p-2.5 rounded-md bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2">
 							<IconAlertTriangle size={15} className="text-amber-600 shrink-0 mt-0.5" />
 							<span>
-								<strong>Advarsel:</strong> Sletning af holdet vil også automatisk slette den tilknyttede hold-konto!
+								<strong>Advarsel:</strong> Sletning af dette hold vil også slette den tilknyttede holdkonto samt alle holdets registrerede stationstider!
 							</span>
 						</div>
 

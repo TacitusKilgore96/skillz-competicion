@@ -14,15 +14,14 @@ import {
 	IconAlertTriangle,
 	IconCheck,
 	IconFlag,
-	IconMapPin,
 	IconKey,
 	IconEye,
 	IconEyeOff,
 	IconCopy,
+	IconTrophy,
 	IconClock,
+	IconMapPin,
 	IconUsers,
-	IconFileDescription,
-	IconAdjustments,
 } from "@tabler/icons-react";
 import { button, iconButton } from "@/components/admin/Button";
 import textField from "@/components/admin/TextField";
@@ -30,15 +29,15 @@ import card from "@/components/admin/Card";
 import SearchableSelect, { SearchableSelectOption } from "@/components/admin/SearchableSelect";
 import {
 	StationModel,
-	StationTimeModel,
 	CreateStationDTO,
 	UpdateStationDTO,
+	StationTimeModel,
 	CreateStationTimeDTO,
 	UpdateStationTimeDTO,
 } from "@/models/StationModel";
 import { TeamModel } from "@/models/TeamModel";
-import { AccountModel } from "@/models/AccountModel";
 import { ClassModel } from "@/models/ClassModel";
+import { AccountModel } from "@/models/AccountModel";
 import {
 	getStations,
 	createStation,
@@ -124,8 +123,10 @@ export default function StationManagement({
 		}, 3500);
 	};
 
-	const fetchData = async (selectTargetId?: number | null) => {
-		setLoading(true);
+	const fetchData = async (selectTargetId?: number | null, isInitial = false) => {
+		if (isInitial && stations.length === 0) {
+			setLoading(true);
+		}
 		try {
 			const [stationsData, teamsData, classesData, accountsData, timesData] =
 				await Promise.all([
@@ -160,10 +161,18 @@ export default function StationManagement({
 		}
 	};
 
+	// Initial fetch on mount or when active eventId changes
 	useEffect(() => {
-		fetchData(initialStationId);
+		fetchData(initialStationId, true);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [initialStationId, numEventId]);
+	}, [numEventId]);
+
+	// Sync selectedId when initialStationId changes externally without refetching full list
+	useEffect(() => {
+		if (initialStationId !== undefined && initialStationId !== null) {
+			setSelectedId(initialStationId);
+		}
+	}, [initialStationId]);
 
 	const selectedStation = useMemo(() => {
 		return stations.find((s) => s.id === selectedId) || null;
@@ -192,21 +201,21 @@ export default function StationManagement({
 		return accountMap.get(selectedStation.accountId) || null;
 	}, [selectedStation, accountMap]);
 
-	// Times recorded for the selected station, sorted by time ascending
-	const stationTimes = useMemo(() => {
+	// Station times for the selected station
+	const selectedStationTimes = useMemo(() => {
 		if (!selectedStation) return [];
 		return times
 			.filter((t) => t.stationId === selectedStation.id)
 			.sort((a, b) => a.timeSeconds - b.timeSeconds);
 	}, [times, selectedStation]);
 
-	// Team options for SearchableSelect
-	const teamSelectOptions = useMemo<SearchableSelectOption<number>[]>(() => {
-		return teams.map((tm) => {
-			const cls = classMap.get(tm.classId);
+	// Options for SearchableSelect (Teams dropdown)
+	const teamOptions = useMemo<SearchableSelectOption<number>[]>(() => {
+		return teams.map((team) => {
+			const cls = classMap.get(team.classId);
 			return {
-				value: tm.id,
-				label: tm.name,
+				value: team.id,
+				label: team.name,
 				subLabel: cls ? `${cls.name} · ${cls.school}` : undefined,
 				icon: <IconUsers size={16} />,
 			};
@@ -216,13 +225,12 @@ export default function StationManagement({
 	// Filtered stations list
 	const filteredStations = useMemo(() => {
 		const q = searchQuery.toLowerCase().trim();
+		if (!q) return stations;
 		return stations.filter((s) => {
-			if (!q) return true;
-			return (
-				s.name.toLowerCase().includes(q) ||
-				(s.location && s.location.toLowerCase().includes(q)) ||
-				(s.description && s.description.toLowerCase().includes(q))
-			);
+			const matchesName = s.name.toLowerCase().includes(q);
+			const matchesLocation = s.location?.toLowerCase().includes(q) || false;
+			const matchesDescription = s.description?.toLowerCase().includes(q) || false;
+			return matchesName || matchesLocation || matchesDescription;
 		});
 	}, [stations, searchQuery]);
 
@@ -231,9 +239,7 @@ export default function StationManagement({
 		setViewMode("VIEW");
 		setFormError(null);
 		setShowPassword(false);
-		startTransition(() => {
-			router.push(`/admin/${activeEventId}/stations/${s.id}`);
-		});
+		window.history.replaceState(null, "", `/admin/${activeEventId}/stations/${s.id}`);
 	};
 
 	const handleStartCreate = () => {
@@ -281,7 +287,7 @@ export default function StationManagement({
 				await fetchData(created.id);
 				setViewMode("VIEW");
 				showNotification(`Stationen '${created.name}' er oprettet med postvagt-konto!`);
-				router.push(`/admin/${activeEventId}/stations/${created.id}`);
+				window.history.replaceState(null, "", `/admin/${activeEventId}/stations/${created.id}`);
 			} else if (viewMode === "EDIT" && selectedStation) {
 				const dto: UpdateStationDTO = {
 					name: trimmedName,
@@ -306,7 +312,7 @@ export default function StationManagement({
 		setIsDeleting(true);
 		try {
 			await deleteStation(stationToDelete.id);
-			showNotification(`Stationen '${stationToDelete.name}' og dens konto er slettet.`);
+			showNotification(`Stationen '${stationToDelete.name}' og dens postvagt-konto er slettet.`);
 			setStationToDelete(null);
 			const remaining = stations.filter((s) => s.id !== stationToDelete.id);
 			setStations(remaining);
@@ -314,9 +320,9 @@ export default function StationManagement({
 				const nextSelected = remaining.length > 0 ? remaining[0].id : null;
 				setSelectedId(nextSelected);
 				if (nextSelected !== null) {
-					router.push(`/admin/${activeEventId}/stations/${nextSelected}`);
+					window.history.replaceState(null, "", `/admin/${activeEventId}/stations/${nextSelected}`);
 				} else {
-					router.push(`/admin/${activeEventId}/stations`);
+					window.history.replaceState(null, "", `/admin/${activeEventId}/stations`);
 				}
 			}
 			await fetchData(selectedId === stationToDelete.id ? null : selectedId);
@@ -328,8 +334,9 @@ export default function StationManagement({
 		}
 	};
 
-	// Open Add Time Modal
+	// ---------------- TIME RECORDING MODAL LOGIC ----------------
 	const handleOpenAddTime = () => {
+		if (!selectedStation) return;
 		setEditingTime(null);
 		setTimeTeamId(teams.length > 0 ? teams[0].id : -1);
 		setTimeMinutes("0");
@@ -340,12 +347,11 @@ export default function StationManagement({
 		setTimeModalOpen(true);
 	};
 
-	// Open Edit Time Modal
-	const handleOpenEditTime = (timeRecord: StationTimeModel) => {
-		setEditingTime(timeRecord);
-		setTimeTeamId(timeRecord.teamId);
+	const handleOpenEditTime = (st: StationTimeModel) => {
+		setEditingTime(st);
+		setTimeTeamId(st.teamId);
 
-		const totalSec = timeRecord.timeSeconds;
+		const totalSec = st.timeSeconds;
 		const mins = Math.floor(totalSec / 60);
 		const secs = Math.floor(totalSec % 60);
 		const ms = Math.round((totalSec - Math.floor(totalSec)) * 1000);
@@ -353,57 +359,56 @@ export default function StationManagement({
 		setTimeMinutes(String(mins));
 		setTimeSeconds(String(secs).padStart(2, "0"));
 		setTimeMilliseconds(String(ms).padStart(3, "0"));
-		setTimePoints(timeRecord.points !== undefined ? String(timeRecord.points) : "");
+		setTimePoints(st.points !== undefined ? String(st.points) : "");
 		setTimeModalError(null);
 		setTimeModalOpen(true);
 	};
 
-	// Save Time (Create or Update)
 	const handleSaveTime = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!selectedStation) return;
 		setTimeModalError(null);
 
 		if (timeTeamId === -1 || !teamMap.has(timeTeamId)) {
-			setTimeModalError("Vælg venligst et hold");
+			setTimeModalError("Vælg venligst et gyldigt hold");
 			return;
 		}
 
-		const mins = parseInt(timeMinutes) || 0;
-		const secs = parseInt(timeSeconds) || 0;
-		const ms = parseInt(timeMilliseconds) || 0;
-		const rawTotalSec = mins * 60 + secs + ms / 1000;
+		const mins = parseInt(timeMinutes, 10) || 0;
+		const secs = parseInt(timeSeconds, 10) || 0;
+		const ms = parseInt(timeMilliseconds, 10) || 0;
 
-		if (rawTotalSec <= 0) {
-			setTimeModalError("Tiden skal være større end 0 sekunder");
+		if (mins < 0 || secs < 0 || ms < 0 || (mins === 0 && secs === 0 && ms === 0)) {
+			setTimeModalError("Indtast venligst en gyldig tid større end 0 sekunder");
 			return;
 		}
 
-		const pointsVal = timePoints.trim() !== "" ? parseFloat(timePoints) : undefined;
+		const totalSeconds = mins * 60 + secs + ms / 1000;
+		const pointsNum = timePoints.trim() !== "" ? Number(timePoints) : undefined;
 
 		setIsTimeSubmitting(true);
 		try {
-			if (editingTime) {
-				const dto: UpdateStationTimeDTO = {
-					timeSeconds: rawTotalSec,
-					points: pointsVal,
-				};
-				await updateStationTime(editingTime.id, dto);
-				showNotification("Tiden er opdateret!");
-			} else {
+			if (!editingTime) {
 				const dto: CreateStationTimeDTO = {
 					eventId: numEventId,
 					stationId: selectedStation.id,
 					teamId: timeTeamId,
-					timeSeconds: rawTotalSec,
-					points: pointsVal,
+					timeSeconds: totalSeconds,
+					points: pointsNum,
 				};
 				await createStationTime(dto);
-				showNotification("Tiden er registreret!");
+				showNotification("Tidsregistrering er tilføjet!");
+			} else {
+				const dto: UpdateStationTimeDTO = {
+					teamId: timeTeamId,
+					timeSeconds: totalSeconds,
+					points: pointsNum,
+				};
+				await updateStationTime(editingTime.id, dto);
+				showNotification("Tidsregistrering er opdateret!");
 			}
 			setTimeModalOpen(false);
-			const updatedTimes = await getStationTimes();
-			setTimes(updatedTimes);
+			await fetchData(selectedStation.id);
 		} catch (err: unknown) {
 			const msg = err instanceof Error ? err.message : "Kunne ikke gemme tidsregistrering";
 			setTimeModalError(msg);
@@ -412,7 +417,6 @@ export default function StationManagement({
 		}
 	};
 
-	// Delete Time Confirmation
 	const handleDeleteTimeConfirm = async () => {
 		if (!timeToDelete) return;
 		setIsDeletingTime(true);
@@ -420,21 +424,13 @@ export default function StationManagement({
 			await deleteStationTime(timeToDelete.id);
 			showNotification("Tidsregistreringen er slettet.");
 			setTimeToDelete(null);
-			const updatedTimes = await getStationTimes();
-			setTimes(updatedTimes);
+			await fetchData(selectedId);
 		} catch (err: unknown) {
-			const msg = err instanceof Error ? err.message : "Kunne ikke slette tid";
+			const msg = err instanceof Error ? err.message : "Kunne ikke slette tiden";
 			showNotification(msg, "error");
 		} finally {
 			setIsDeletingTime(false);
 		}
-	};
-
-	const formatDuration = (totalSeconds: number) => {
-		const mins = Math.floor(totalSeconds / 60);
-		const secs = Math.floor(totalSeconds % 60);
-		const ms = Math.floor((totalSeconds - Math.floor(totalSeconds)) * 100);
-		return `${mins > 0 ? `${mins}m ` : ""}${secs}.${String(ms).padStart(2, "0")}s`;
 	};
 
 	const handleCopy = (text: string, fieldName: string) => {
@@ -443,13 +439,20 @@ export default function StationManagement({
 		setTimeout(() => setCopiedField(null), 2000);
 	};
 
+	const formatDuration = (totalSeconds: number) => {
+		const mins = Math.floor(totalSeconds / 60);
+		const secs = Math.floor(totalSeconds % 60);
+		const ms = Math.floor((totalSeconds % 1) * 100);
+		return `${mins}:${secs.toString().padStart(2, "0")}.${ms.toString().padStart(2, "0")}`;
+	};
+
 	return (
 		<div className="flex h-full w-full bg-slate-50 relative overflow-hidden">
 			{/* Toast notification */}
 			{toast && (
 				<div
 					className={cn(
-						"absolute top-4 right-4 z-50 px-3.5 py-2 rounded-lg border text-sm font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-150",
+						"absolute top-4 right-4 z-50 px-3.5 py-2 rounded-lg border text-sm font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-150 shadow-sm",
 						toast.type === "success"
 							? "bg-slate-900 text-white border-slate-800"
 							: "bg-red-50 text-red-900 border-red-200"
@@ -476,7 +479,7 @@ export default function StationManagement({
 						<input
 							type="search"
 							className={cn(textField(), "w-full pl-8 pr-2.5 py-1.5 text-xs")}
-							placeholder="Søg station eller placering..."
+							placeholder="Søg station eller lokation..."
 							value={searchQuery}
 							onChange={(e) => setSearchQuery(e.target.value)}
 						/>
@@ -495,7 +498,7 @@ export default function StationManagement({
 
 				{/* Stations List */}
 				<div className="flex-1 overflow-y-auto pr-0.5">
-					{loading ? (
+					{loading && stations.length === 0 ? (
 						<div className="flex flex-col items-center justify-center h-40 text-slate-400 gap-2">
 							<IconLoader2 size={20} className="animate-spin" />
 							<p className="text-xs">Henter stationer...</p>
@@ -506,7 +509,7 @@ export default function StationManagement({
 							<p className="text-xs font-medium text-slate-600">Ingen stationer fundet</p>
 							<p className="text-[11px] text-slate-400 mt-0.5">
 								{stations.length === 0
-									? "Der er endnu ikke oprettet stationer/poster til dette event."
+									? "Der er endnu ikke oprettet stationer til dette event."
 									: "Prøv en anden søgning."}
 							</p>
 							<button
@@ -548,23 +551,13 @@ export default function StationManagement({
 												<div className="min-w-0">
 													<div className="font-medium text-xs truncate flex items-center gap-1.5">
 														<span>{station.name}</span>
-														{station.location && (
-															<span
-																className={cn(
-																	"text-[10px] px-1 py-0.2 rounded font-normal truncate",
-																	isSelected
-																		? "bg-slate-800 text-slate-300"
-																		: "bg-slate-100 text-slate-600"
-																)}
-															>
-																{station.location}
-															</span>
-														)}
 													</div>
 													<div className="flex items-center gap-2 mt-0.5 text-[11px] opacity-60">
-														<span className="font-mono">#{station.id}</span>
-														<span className="ml-auto font-medium">
-															{stationTimesCount} tider
+														<span className="truncate">
+															{station.location || "Ingen lokation"}
+														</span>
+														<span className="shrink-0 font-medium">
+															· {stationTimesCount} tider
 														</span>
 													</div>
 												</div>
@@ -623,7 +616,7 @@ export default function StationManagement({
 								<div>
 									<h2 className="text-lg font-bold text-slate-900">Opret ny station</h2>
 									<p className="text-xs text-slate-500 mt-0.5">
-										Opret en aktivitetspost til eventet. Der oprettes automatisk en tilknyttet postvagt-konto.
+										Opret en post/station til konkurrencen. Der oprettes automatisk en tilknyttet postvagt-konto.
 									</p>
 								</div>
 								<button
@@ -642,7 +635,7 @@ export default function StationManagement({
 							)}
 
 							<form onSubmit={handleSaveForm} className="space-y-4">
-								{/* Name */}
+								{/* Station Name */}
 								<div>
 									<label
 										htmlFor="new-station-name"
@@ -655,7 +648,7 @@ export default function StationManagement({
 										type="text"
 										required
 										className={cn(textField(), "w-full py-2 px-3 text-sm")}
-										placeholder="f.eks. Post 1 - Murerhytten eller Forhindringsbane"
+										placeholder="f.eks. Station 1: Murertårnet eller Præcisionstræ"
 										value={formName}
 										onChange={(e) => setFormName(e.target.value)}
 									/>
@@ -667,19 +660,16 @@ export default function StationManagement({
 										htmlFor="new-station-location"
 										className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5"
 									>
-										Placering / Lokation (valgfri)
+										Lokation / Område (valgfri)
 									</label>
-									<div className="relative flex items-center">
-										<IconMapPin size={16} className="absolute left-3 text-slate-400" />
-										<input
-											id="new-station-location"
-											type="text"
-											className={cn(textField(), "w-full pl-9 pr-3 py-2 text-sm")}
-											placeholder="f.eks. Bygning B, Værksted 3 eller Skolegården"
-											value={formLocation}
-											onChange={(e) => setFormLocation(e.target.value)}
-										/>
-									</div>
+									<input
+										id="new-station-location"
+										type="text"
+										className={cn(textField(), "w-full py-2 px-3 text-sm")}
+										placeholder="f.eks. Hal B - Stand 14"
+										value={formLocation}
+										onChange={(e) => setFormLocation(e.target.value)}
+									/>
 								</div>
 
 								{/* Description */}
@@ -694,19 +684,19 @@ export default function StationManagement({
 										id="new-station-description"
 										rows={3}
 										className={cn(textField(), "w-full py-2 px-3 text-sm resize-none")}
-										placeholder="Kort instruks eller information til postvagten og holdene..."
+										placeholder="Kort beskrivelse af stationens aktivitet og regler..."
 										value={formDescription}
 										onChange={(e) => setFormDescription(e.target.value)}
 									/>
 								</div>
 
-								{/* Post Guard Account Info */}
+								{/* Post Guard Account Info Notice */}
 								<div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 text-xs flex items-start gap-2.5">
 									<IconKey size={16} className="text-slate-500 shrink-0 mt-0.5" />
 									<div>
 										<p className="font-semibold text-slate-800">Automatisk Postvagt-Login</p>
 										<p className="mt-0.5 text-slate-500">
-											Der oprettes automatisk en postvagt-brugerkonto dedikeret til denne station.
+											Der oprettes automatisk en postvagt-brugerkonto knyttet direkte til denne station, så postvagten kan indtaste holdenes tider.
 										</p>
 									</div>
 								</div>
@@ -765,7 +755,7 @@ export default function StationManagement({
 							)}
 
 							<form onSubmit={handleSaveForm} className="space-y-4">
-								{/* Name */}
+								{/* Station Name */}
 								<div>
 									<label
 										htmlFor="edit-station-name"
@@ -789,18 +779,15 @@ export default function StationManagement({
 										htmlFor="edit-station-location"
 										className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5"
 									>
-										Placering / Lokation
+										Lokation / Område (valgfri)
 									</label>
-									<div className="relative flex items-center">
-										<IconMapPin size={16} className="absolute left-3 text-slate-400" />
-										<input
-											id="edit-station-location"
-											type="text"
-											className={cn(textField(), "w-full pl-9 pr-3 py-2 text-sm")}
-											value={formLocation}
-											onChange={(e) => setFormLocation(e.target.value)}
-										/>
-									</div>
+									<input
+										id="edit-station-location"
+										type="text"
+										className={cn(textField(), "w-full py-2 px-3 text-sm")}
+										value={formLocation}
+										onChange={(e) => setFormLocation(e.target.value)}
+									/>
 								</div>
 
 								{/* Description */}
@@ -849,7 +836,7 @@ export default function StationManagement({
 					</div>
 				) : selectedStation ? (
 					/* View Station Details */
-					<div className="max-w-4xl mx-auto space-y-4">
+					<div className="max-w-3xl mx-auto space-y-4">
 						{/* Station Header Card */}
 						<div className={cn(card(), "p-5")}>
 							<div className="flex items-start justify-between">
@@ -858,20 +845,17 @@ export default function StationManagement({
 										<IconFlag size={22} />
 									</div>
 									<div>
-										<div className="flex items-center gap-2">
-											<h2 className="text-xl font-bold text-slate-900">
-												{selectedStation.name}
-											</h2>
+										<h2 className="text-xl font-bold text-slate-900">
+											{selectedStation.name}
+										</h2>
+										<div className="flex items-center gap-3 mt-0.5 text-xs text-slate-500">
 											{selectedStation.location && (
-												<span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700 flex items-center gap-1">
-													<IconMapPin size={13} />
+												<span className="flex items-center gap-1">
+													<IconMapPin size={13} className="text-slate-400" />
 													{selectedStation.location}
 												</span>
 											)}
 										</div>
-										<p className="text-xs text-slate-400 mt-0.5 font-mono">
-											Station #{selectedStation.id} · Event #{activeEventId}
-										</p>
 									</div>
 								</div>
 
@@ -899,10 +883,9 @@ export default function StationManagement({
 							</div>
 
 							{selectedStation.description && (
-								<div className="mt-3.5 pt-3.5 border-t border-slate-100 text-xs text-slate-600 flex items-start gap-2">
-									<IconFileDescription size={16} className="text-slate-400 shrink-0 mt-0.5" />
-									<p className="leading-relaxed">{selectedStation.description}</p>
-								</div>
+								<p className="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-600 leading-relaxed">
+									{selectedStation.description}
+								</p>
 							)}
 						</div>
 
@@ -913,10 +896,10 @@ export default function StationManagement({
 									<div>
 										<h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
 											<IconKey size={16} className="text-slate-400" />
-											<span>Tilknyttet Postvagt-Login</span>
+											<span>Tilknyttet Postvagt-Konto</span>
 										</h3>
 										<p className="text-[11px] text-slate-400 mt-0.5">
-											Konto til postvagten som styrer tidtagningen for denne station
+											Postvagten bruger dette login til at tilgå og registrere tider for denne station
 										</p>
 									</div>
 									<Link
@@ -989,16 +972,16 @@ export default function StationManagement({
 							</div>
 						)}
 
-						{/* Station Times / Leaderboard Table */}
+						{/* Station Times Leaderboard & Management */}
 						<div className={cn(card(), "p-5 space-y-4")}>
 							<div className="flex items-center justify-between">
 								<div>
 									<h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-										<IconClock size={16} className="text-slate-500" />
-										<span>Hold-Tider & Resultater ({stationTimes.length})</span>
+										<IconTrophy size={16} className="text-amber-500" />
+										<span>Holdenes Registrerede Tider ({selectedStationTimes.length})</span>
 									</h3>
 									<p className="text-[11px] text-slate-400 mt-0.5">
-										Oversigt over alle tider og scores registreret på denne station
+										Oversigt over holdtider for denne station sorteret efter hurtigste tid
 									</p>
 								</div>
 								<button
@@ -1008,98 +991,82 @@ export default function StationManagement({
 										"text-xs py-1 px-2.5 bg-slate-900 text-white border-transparent hover:bg-slate-800 flex items-center gap-1"
 									)}
 								>
-									<IconPlus size={13} /> Registrer tid
+									<IconPlus size={13} /> Registrer Tid
 								</button>
 							</div>
 
-							{stationTimes.length === 0 ? (
-								<div className="p-6 rounded-lg bg-slate-50 border border-slate-200 text-center text-slate-400 text-xs">
-									<IconClock size={24} className="mx-auto mb-1 opacity-40" />
+							{selectedStationTimes.length === 0 ? (
+								<div className="p-8 rounded-lg bg-slate-50 border border-slate-200 text-center text-slate-400 text-xs">
+									<IconClock size={26} className="mx-auto mb-1.5 opacity-40" />
 									<p className="font-medium text-slate-600">Ingen tider registreret endnu</p>
 									<p className="text-[11px] text-slate-400 mt-0.5">
-										Når hold gennemfører stationen, vises deres tider og placeringer her.
+										Klik på &quot;Registrer Tid&quot; for at tilføje et holds resultat for denne post.
 									</p>
 								</div>
 							) : (
-								<div className="overflow-x-auto">
-									<table className="w-full text-left text-xs border-collapse">
-										<thead>
-											<tr className="border-b border-slate-200 text-[11px] text-slate-400 uppercase tracking-wider">
-												<th className="py-2.5 px-3 font-semibold w-12 text-center">Plac.</th>
-												<th className="py-2.5 px-3 font-semibold">Hold</th>
-												<th className="py-2.5 px-3 font-semibold">Klasse / Skole</th>
-												<th className="py-2.5 px-3 font-semibold">Tid</th>
-												<th className="py-2.5 px-3 font-semibold">Score / Point</th>
-												<th className="py-2.5 px-3 font-semibold text-right">Handlinger</th>
+								<div className="border border-slate-200 rounded-lg overflow-hidden">
+									<table className="w-full text-left text-xs">
+										<thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+											<tr>
+												<th className="py-2.5 px-3 w-12 text-center">#</th>
+												<th className="py-2.5 px-3">Hold</th>
+												<th className="py-2.5 px-3">Klasse / Skole</th>
+												<th className="py-2.5 px-3 font-mono">Tid</th>
+												<th className="py-2.5 px-3 text-right">Handlinger</th>
 											</tr>
 										</thead>
-										<tbody className="divide-y divide-slate-100">
-											{stationTimes.map((record, index) => {
-												const tm = teamMap.get(record.teamId);
-												const cls = tm ? classMap.get(tm.classId) : null;
+										<tbody className="divide-y divide-slate-100 bg-white">
+											{selectedStationTimes.map((st, index) => {
+												const team = teamMap.get(st.teamId);
+												const cls = team ? classMap.get(team.classId) : null;
 												const isLeader = index === 0;
 
 												return (
-													<tr
-														key={record.id}
-														className={cn(
-															"hover:bg-slate-50/80 transition-colors",
-															isLeader && "bg-slate-50/40 font-medium"
-														)}
-													>
-														<td className="py-2 px-3 text-center">
+													<tr key={st.id} className="hover:bg-slate-50 transition-colors">
+														{/* Rank */}
+														<td className="py-2.5 px-3 text-center">
 															<span
 																className={cn(
-																	"inline-flex items-center justify-center w-5 h-5 rounded text-[11px] font-semibold",
-																	index === 0
-																		? "bg-slate-900 text-white"
-																		: index === 1
-																		? "bg-slate-200 text-slate-800"
-																		: index === 2
-																		? "bg-slate-100 text-slate-700"
-																		: "text-slate-400"
+																	"inline-flex items-center justify-center w-5 h-5 rounded text-[11px] font-bold",
+																	isLeader
+																		? "bg-amber-100 text-amber-900 border border-amber-300"
+																		: "text-slate-500 font-medium"
 																)}
 															>
 																{index + 1}
 															</span>
 														</td>
-														<td className="py-2 px-3 font-medium text-slate-900">
-															<div className="flex items-center gap-1.5">
-																<span>{tm ? tm.name : `Hold #${record.teamId}`}</span>
-															</div>
+
+														{/* Team Name */}
+														<td className="py-2.5 px-3 font-semibold text-slate-900">
+															{team ? team.name : `Hold #${st.teamId}`}
 														</td>
-														<td className="py-2 px-3 text-slate-500">
-															{cls ? (
-																<div className="flex flex-col">
-																	<span>{cls.name}</span>
-																	<span className="text-[10px] text-slate-400 truncate">
-																		{cls.school}
-																	</span>
-																</div>
-															) : (
-																"-"
-															)}
+
+														{/* Class / School */}
+														<td className="py-2.5 px-3 text-slate-500 text-[11px]">
+															{cls ? `${cls.name} (${cls.school})` : "—"}
 														</td>
-														<td className="py-2 px-3 font-mono font-semibold text-slate-900">
-															{formatDuration(record.timeSeconds)}
+
+														{/* Time */}
+														<td className="py-2.5 px-3 font-mono font-bold text-slate-800">
+															{formatDuration(st.timeSeconds)}
 														</td>
-														<td className="py-2 px-3 text-slate-600">
-															{record.points !== undefined ? `${record.points} point` : "-"}
-														</td>
-														<td className="py-2 px-3 text-right">
+
+														{/* Actions */}
+														<td className="py-2.5 px-3 text-right">
 															<div className="flex items-center justify-end gap-1">
 																<button
 																	type="button"
+																	onClick={() => handleOpenEditTime(st)}
 																	title="Rediger tid"
-																	onClick={() => handleOpenEditTime(record)}
 																	className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
 																>
 																	<IconEdit size={14} />
 																</button>
 																<button
 																	type="button"
+																	onClick={() => setTimeToDelete(st)}
 																	title="Slet tid"
-																	onClick={() => setTimeToDelete(record)}
 																	className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
 																>
 																	<IconTrash size={14} />
@@ -1123,7 +1090,7 @@ export default function StationManagement({
 						</div>
 						<h3 className="text-base font-bold text-slate-800">Ingen station valgt</h3>
 						<p className="text-xs text-slate-500 mt-1 mb-4">
-							Vælg en station fra listen til venstre for at se og redigere detaljerne, eller opret en ny station.
+							Vælg en station fra listen til venstre for at administrere dens tider og oplysninger, eller opret en ny.
 						</p>
 						<button
 							onClick={handleStartCreate}
@@ -1139,20 +1106,17 @@ export default function StationManagement({
 			</div>
 
 			{/* Add / Edit Time Modal */}
-			{timeModalOpen && selectedStation && (
+			{timeModalOpen && (
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 backdrop-blur-xs p-4 animate-in fade-in duration-100">
 					<div className={cn(card(), "p-5 max-w-md w-full space-y-4")}>
 						<div className="flex items-center justify-between pb-3 border-b border-slate-100">
-							<div className="flex items-center gap-2">
-								<div className="w-7 h-7 rounded bg-slate-100 text-slate-700 flex items-center justify-center">
-									<IconClock size={15} />
-								</div>
-								<div>
-									<h3 className="font-bold text-sm text-slate-900">
-										{editingTime ? "Rediger tidtagning" : "Registrer ny holdtid"}
-									</h3>
-									<p className="text-[11px] text-slate-500">{selectedStation.name}</p>
-								</div>
+							<div>
+								<h3 className="font-bold text-sm text-slate-900">
+									{editingTime ? "Rediger holdtid" : "Registrer ny holdtid"}
+								</h3>
+								<p className="text-[11px] text-slate-500 mt-0.5">
+									{selectedStation?.name}
+								</p>
 							</div>
 							<button
 								onClick={() => setTimeModalOpen(false)}
@@ -1173,78 +1137,59 @@ export default function StationManagement({
 							{/* Select Team with SearchableSelect */}
 							<div>
 								<label
-									htmlFor="time-modal-team"
+									htmlFor="time-team"
 									className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5"
 								>
 									Vælg Hold *
 								</label>
 								<SearchableSelect<number>
-									id="time-modal-team"
+									id="time-team"
 									required
-									disabled={editingTime !== null}
 									value={timeTeamId !== -1 ? timeTeamId : null}
-									onChange={(val) => setTimeTeamId(val)}
-									options={teamSelectOptions}
-									placeholder="Vælg eller søg hold..."
+									onChange={(val) => setTimeTeamId(val !== null ? val : -1)}
+									options={teamOptions}
+									placeholder="Søg og vælg hold..."
 									leftIcon={<IconUsers size={16} />}
 								/>
 							</div>
 
-							{/* Raw Time (Minutes, Seconds, Milliseconds) */}
+							{/* Time Inputs (Minutes : Seconds . Milliseconds) */}
 							<div>
 								<label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-									Gennemført Tid *
+									Registreret Tid *
 								</label>
 								<div className="grid grid-cols-3 gap-2">
 									<div>
-										<label
-											htmlFor="time-mins"
-											className="block text-[10px] text-slate-400 font-semibold mb-0.5"
-										>
-											Minutter
-										</label>
+										<span className="text-[10px] text-slate-400 uppercase font-semibold">Min</span>
 										<input
-											id="time-mins"
 											type="number"
 											min={0}
+											max={59}
 											required
-											className={cn(textField(), "w-full py-1.5 px-2 text-center text-xs font-mono")}
+											className={cn(textField(), "w-full py-1.5 px-2 text-center text-sm font-mono")}
 											value={timeMinutes}
 											onChange={(e) => setTimeMinutes(e.target.value)}
 										/>
 									</div>
 									<div>
-										<label
-											htmlFor="time-secs"
-											className="block text-[10px] text-slate-400 font-semibold mb-0.5"
-										>
-											Sekunder
-										</label>
+										<span className="text-[10px] text-slate-400 uppercase font-semibold">Sek</span>
 										<input
-											id="time-secs"
 											type="number"
 											min={0}
 											max={59}
 											required
-											className={cn(textField(), "w-full py-1.5 px-2 text-center text-xs font-mono")}
+											className={cn(textField(), "w-full py-1.5 px-2 text-center text-sm font-mono")}
 											value={timeSeconds}
 											onChange={(e) => setTimeSeconds(e.target.value)}
 										/>
 									</div>
 									<div>
-										<label
-											htmlFor="time-ms"
-											className="block text-[10px] text-slate-400 font-semibold mb-0.5"
-										>
-											Millisek.
-										</label>
+										<span className="text-[10px] text-slate-400 uppercase font-semibold">Ms (0-999)</span>
 										<input
-											id="time-ms"
 											type="number"
 											min={0}
 											max={999}
-											required
-											className={cn(textField(), "w-full py-1.5 px-2 text-center text-xs font-mono")}
+											className={cn(textField(), "w-full py-1.5 px-2 text-center text-sm font-mono")}
 											value={timeMilliseconds}
 											onChange={(e) => setTimeMilliseconds(e.target.value)}
 										/>
@@ -1252,30 +1197,8 @@ export default function StationManagement({
 								</div>
 							</div>
 
-							{/* Score / Points */}
-							<div>
-								<label
-									htmlFor="time-points"
-									className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5"
-								>
-									Score / Point (valgfri)
-								</label>
-								<div className="relative flex items-center">
-									<IconAdjustments size={15} className="absolute left-3 text-slate-400" />
-									<input
-										id="time-points"
-										type="number"
-										step="0.1"
-										placeholder="f.eks. 85.5"
-										className={cn(textField(), "w-full pl-8 pr-3 py-1.5 text-xs")}
-										value={timePoints}
-										onChange={(e) => setTimePoints(e.target.value)}
-									/>
-								</div>
-							</div>
-
-							{/* Modal Actions */}
-							<div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+							{/* Actions */}
+							<div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
 								<button
 									type="button"
 									onClick={() => setTimeModalOpen(false)}
@@ -1303,7 +1226,7 @@ export default function StationManagement({
 				</div>
 			)}
 
-			{/* Delete Confirmation Modal (Station) */}
+			{/* Delete Station Confirmation Modal */}
 			{stationToDelete && (
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 backdrop-blur-xs p-4 animate-in fade-in duration-100">
 					<div className={cn(card(), "p-5 max-w-md w-full space-y-3.5")}>
@@ -1358,23 +1281,15 @@ export default function StationManagement({
 				</div>
 			)}
 
-			{/* Delete Confirmation Modal (Time) */}
+			{/* Delete Time Confirmation Modal */}
 			{timeToDelete && (
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 backdrop-blur-xs p-4 animate-in fade-in duration-100">
-					<div className={cn(card(), "p-5 max-w-sm w-full space-y-3.5")}>
-						<div className="flex items-center gap-2.5 text-red-600">
-							<div className="w-8 h-8 rounded-md bg-red-50 flex items-center justify-center shrink-0">
-								<IconTrash size={18} />
-							</div>
-							<div>
-								<h3 className="font-bold text-sm text-slate-900">Slet tidsregistrering</h3>
-								<p className="text-[11px] text-slate-500">Handlingen kan ikke fortrydes</p>
-							</div>
-						</div>
-
+					<div className={cn(card(), "p-5 max-w-md w-full space-y-3")}>
+						<h3 className="font-bold text-sm text-slate-900">Slet tidsregistrering</h3>
 						<p className="text-xs text-slate-600">
-							Er du sikker på, at du vil slette tiden på{" "}
-							<span className="font-semibold text-slate-900">{formatDuration(timeToDelete.timeSeconds)}</span>?
+							Er du sikker på, at du vil slette denne registrerede tid (
+							<span className="font-mono font-semibold">{formatDuration(timeToDelete.timeSeconds)}</span>
+							)?
 						</p>
 
 						<div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">

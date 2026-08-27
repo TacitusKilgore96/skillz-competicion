@@ -10,24 +10,19 @@ import {
 	IconEdit,
 	IconSearch,
 	IconX,
-	IconSchool,
-	IconBuildingCommunity,
-	IconUser,
-	IconUsers,
 	IconLoader2,
 	IconAlertTriangle,
 	IconCheck,
-	IconSparkles,
+	IconSchool,
+	IconUsers,
+	IconUser,
+	IconArrowRight,
 } from "@tabler/icons-react";
 import { button, iconButton } from "@/components/admin/Button";
 import textField from "@/components/admin/TextField";
 import card from "@/components/admin/Card";
-import SchoolSelector from "@/components/admin/SchoolSelector";
-import {
-	ClassModel,
-	CreateClassDTO,
-	UpdateClassDTO,
-} from "@/models/ClassModel";
+import SearchableSelect, { SearchableSelectOption } from "@/components/admin/SearchableSelect";
+import { ClassModel, CreateClassDTO, UpdateClassDTO } from "@/models/ClassModel";
 import { TeamModel } from "@/models/TeamModel";
 import {
 	getClasses,
@@ -90,8 +85,10 @@ export default function ClassManagement({
 		}, 3500);
 	};
 
-	const fetchData = async (selectTargetId?: number | null) => {
-		setLoading(true);
+	const fetchData = async (selectTargetId?: number | null, isInitial = false) => {
+		if (isInitial && classes.length === 0) {
+			setLoading(true);
+		}
 		try {
 			const [classesData, teamsData, schoolsData] = await Promise.all([
 				getClasses({ eventId: numEventId }),
@@ -120,10 +117,18 @@ export default function ClassManagement({
 		}
 	};
 
+	// Initial fetch on mount or when active eventId changes
 	useEffect(() => {
-		fetchData(initialClassId);
+		fetchData(initialClassId, true);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [initialClassId, numEventId]);
+	}, [numEventId]);
+
+	// Sync selectedId when initialClassId changes externally without refetching the full list
+	useEffect(() => {
+		if (initialClassId !== undefined && initialClassId !== null) {
+			setSelectedId(initialClassId);
+		}
+	}, [initialClassId]);
 
 	const selectedClass = useMemo(() => {
 		return classes.find((c) => c.id === selectedId) || null;
@@ -162,9 +167,7 @@ export default function ClassManagement({
 		setSelectedId(cls.id);
 		setViewMode("VIEW");
 		setFormError(null);
-		startTransition(() => {
-			router.push(`/admin/${activeEventId}/classes/${cls.id}`);
-		});
+		window.history.replaceState(null, "", `/admin/${activeEventId}/classes/${cls.id}`);
 	};
 
 	const handleStartCreate = () => {
@@ -222,7 +225,7 @@ export default function ClassManagement({
 				showNotification(
 					`Klassen '${created.name}' er oprettet med ${formTeamCount} autogenererede hold!`
 				);
-				router.push(`/admin/${activeEventId}/classes/${created.id}`);
+				window.history.replaceState(null, "", `/admin/${activeEventId}/classes/${created.id}`);
 			} else if (viewMode === "EDIT" && selectedClass) {
 				const dto: UpdateClassDTO = {
 					name: trimmedName,
@@ -255,9 +258,9 @@ export default function ClassManagement({
 				const nextSelected = remaining.length > 0 ? remaining[0].id : null;
 				setSelectedId(nextSelected);
 				if (nextSelected !== null) {
-					router.push(`/admin/${activeEventId}/classes/${nextSelected}`);
+					window.history.replaceState(null, "", `/admin/${activeEventId}/classes/${nextSelected}`);
 				} else {
-					router.push(`/admin/${activeEventId}/classes`);
+					window.history.replaceState(null, "", `/admin/${activeEventId}/classes`);
 				}
 			}
 			await fetchData(selectedId === classToDelete.id ? null : selectedId);
@@ -275,7 +278,7 @@ export default function ClassManagement({
 			{toast && (
 				<div
 					className={cn(
-						"absolute top-4 right-4 z-50 px-3.5 py-2 rounded-lg border text-sm font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-150",
+						"absolute top-4 right-4 z-50 px-3.5 py-2 rounded-lg border text-sm font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-150 shadow-sm",
 						toast.type === "success"
 							? "bg-slate-900 text-white border-slate-800"
 							: "bg-red-50 text-red-900 border-red-200"
@@ -321,43 +324,38 @@ export default function ClassManagement({
 
 				{/* School Filter Chips */}
 				{availableSchools.length > 0 && (
-					<div className="flex gap-1 overflow-x-auto pb-1 max-w-full text-xs font-medium scrollbar-thin">
+					<div className="flex gap-1 overflow-x-auto pb-1 text-xs no-scrollbar">
 						<button
 							onClick={() => setSchoolFilter("ALL")}
 							className={cn(
-								"px-2 py-0.5 rounded-md transition-colors whitespace-nowrap shrink-0 text-xs border",
+								"px-2 py-0.5 rounded text-[11px] font-medium shrink-0 transition-colors",
 								schoolFilter === "ALL"
-									? "bg-slate-900 text-white border-slate-900"
-									: "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+									? "bg-slate-900 text-white"
+									: "bg-slate-100 text-slate-600 hover:bg-slate-200"
 							)}
 						>
 							Alle ({classes.length})
 						</button>
-						{availableSchools.map((s) => {
-							const count = classes.filter((c) => c.school === s).length;
-							return (
-								<button
-									key={s}
-									onClick={() => setSchoolFilter(s)}
-									className={cn(
-										"px-2 py-0.5 rounded-md transition-colors whitespace-nowrap shrink-0 flex items-center gap-1 text-xs border",
-										schoolFilter === s
-											? "bg-slate-900 text-white border-slate-900"
-											: "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
-									)}
-								>
-									<IconBuildingCommunity size={11} />
-									<span>{s}</span>
-									<span className="opacity-60 text-[10px]">({count})</span>
-								</button>
-							);
-						})}
+						{availableSchools.map((s) => (
+							<button
+								key={s}
+								onClick={() => setSchoolFilter(s)}
+								className={cn(
+									"px-2 py-0.5 rounded text-[11px] font-medium shrink-0 transition-colors truncate max-w-[120px]",
+									schoolFilter === s
+										? "bg-slate-900 text-white"
+										: "bg-slate-100 text-slate-600 hover:bg-slate-200"
+								)}
+							>
+								{s}
+							</button>
+						))}
 					</div>
 				)}
 
 				{/* Classes List */}
 				<div className="flex-1 overflow-y-auto pr-0.5">
-					{loading ? (
+					{loading && classes.length === 0 ? (
 						<div className="flex flex-col items-center justify-center h-40 text-slate-400 gap-2">
 							<IconLoader2 size={20} className="animate-spin" />
 							<p className="text-xs">Henter klasser...</p>
@@ -369,7 +367,7 @@ export default function ClassManagement({
 							<p className="text-[11px] text-slate-400 mt-0.5">
 								{classes.length === 0
 									? "Der er endnu ikke oprettet klasser til dette event."
-									: "Prøv en anden søgning eller filter."}
+									: "Prøv et andet filter eller en anden søgning."}
 							</p>
 							<button
 								onClick={handleStartCreate}
@@ -382,7 +380,7 @@ export default function ClassManagement({
 						<ul className="flex flex-col gap-1.5">
 							{filteredClasses.map((cls) => {
 								const isSelected = selectedId === cls.id && viewMode !== "CREATE";
-								const classTeamCount = teams.filter((t) => t.classId === cls.id).length;
+								const classTeamsCount = teams.filter((t) => t.classId === cls.id).length;
 
 								return (
 									<li key={cls.id}>
@@ -399,7 +397,7 @@ export default function ClassManagement({
 											<div className="flex items-center gap-2.5 min-w-0">
 												<div
 													className={cn(
-														"w-8 h-8 rounded-md flex items-center justify-center shrink-0 font-medium text-xs",
+														"w-8 h-8 rounded-md flex items-center justify-center shrink-0 font-semibold text-xs",
 														isSelected
 															? "bg-slate-800 text-slate-200"
 															: "bg-slate-100 text-slate-600"
@@ -410,23 +408,11 @@ export default function ClassManagement({
 												<div className="min-w-0">
 													<div className="font-medium text-xs truncate flex items-center gap-1.5">
 														<span>{cls.name}</span>
-														<span
-															className={cn(
-																"text-[10px] px-1 py-0.2 rounded font-normal truncate",
-																isSelected
-																	? "bg-slate-800 text-slate-300"
-																	: "bg-slate-100 text-slate-600"
-															)}
-														>
-															{cls.school}
-														</span>
 													</div>
 													<div className="flex items-center gap-2 mt-0.5 text-[11px] opacity-60">
-														{cls.teacherName && (
-															<span className="truncate">{cls.teacherName}</span>
-														)}
-														<span className="ml-auto font-medium">
-															{classTeamCount} hold
+														<span className="truncate">{cls.school}</span>
+														<span className="shrink-0 font-medium">
+															· {classTeamsCount} hold
 														</span>
 													</div>
 												</div>
@@ -485,7 +471,7 @@ export default function ClassManagement({
 								<div>
 									<h2 className="text-lg font-bold text-slate-900">Opret ny klasse</h2>
 									<p className="text-xs text-slate-500 mt-0.5">
-										Opret en skoleklasse tilknyttet det aktuelle event.
+										Opret en klasse og vælg antallet af hold, der skal autogenereres til konkurrencen.
 									</p>
 								</div>
 								<button
@@ -504,7 +490,7 @@ export default function ClassManagement({
 							)}
 
 							<form onSubmit={handleSaveForm} className="space-y-4">
-								{/* Class Name */}
+								{/* Name */}
 								<div>
 									<label
 										htmlFor="new-class-name"
@@ -517,32 +503,33 @@ export default function ClassManagement({
 										type="text"
 										required
 										className={cn(textField(), "w-full py-2 px-3 text-sm")}
-										placeholder="f.eks. 8.A eller 10. Teknisk"
+										placeholder="f.eks. 8.A eller Grundforløb 1 - Tømrer"
 										value={formName}
 										onChange={(e) => setFormName(e.target.value)}
 									/>
 								</div>
 
-								{/* School with Autocomplete Selection Box */}
+								{/* School - Searchable / Free text */}
 								<div>
-									<div className="flex items-center justify-between mb-1.5">
-										<label
-											htmlFor="new-class-school"
-											className="block text-xs font-semibold uppercase tracking-wider text-slate-600"
-										>
-											Skole *
-										</label>
-										<span className="text-[11px] text-slate-400">
-											Vælg fra listen eller skriv en ny
-										</span>
-									</div>
-									<SchoolSelector
-										value={formSchool}
-										onChange={setFormSchool}
-										existingSchools={schools}
+									<label
+										htmlFor="new-class-school"
+										className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5"
+									>
+										Skole *
+									</label>
+									<SearchableSelect<string>
+										id="new-class-school"
 										required
-										placeholder="Indtast skolenavn eller vælg eksisterende..."
+										allowCustom
+										value={formSchool || null}
+										onChange={(val) => setFormSchool(val || "")}
+										options={schools.map((s) => ({ value: s, label: s }))}
+										placeholder="Vælg skole eller skriv en ny..."
+										leftIcon={<IconSchool size={16} />}
 									/>
+									<p className="text-[11px] text-slate-400 mt-1">
+										Vælg en eksisterende skole fra listen eller skriv navnet på en ny.
+									</p>
 								</div>
 
 								{/* Teacher Name */}
@@ -551,45 +538,41 @@ export default function ClassManagement({
 										htmlFor="new-class-teacher"
 										className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5"
 									>
-										Lærer / Kontaktperson (valgfri)
+										Underviser / Kontaktlærer (valgfri)
 									</label>
-									<div className="relative flex items-center">
-										<IconUser size={16} className="absolute left-3 text-slate-400" />
-										<input
-											id="new-class-teacher"
-											type="text"
-											className={cn(textField(), "w-full pl-9 pr-3 py-2 text-sm")}
-											placeholder="f.eks. Susanne Hansen"
-											value={formTeacherName}
-											onChange={(e) => setFormTeacherName(e.target.value)}
-										/>
-									</div>
+									<input
+										id="new-class-teacher"
+										type="text"
+										className={cn(textField(), "w-full py-2 px-3 text-sm")}
+										placeholder="f.eks. Martin Jensen"
+										value={formTeacherName}
+										onChange={(e) => setFormTeacherName(e.target.value)}
+									/>
 								</div>
 
-								{/* Number of Teams to Generate */}
-								<div>
+								{/* Autogenerate Teams */}
+								<div className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-2">
 									<label
-										htmlFor="new-class-teams-count"
-										className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5"
+										htmlFor="new-class-teams"
+										className="block text-xs font-bold uppercase tracking-wider text-slate-800"
 									>
-										Antal hold der skal autogenereres *
+										Antal hold, der skal autogenereres *
 									</label>
 									<div className="flex items-center gap-3">
 										<input
-											id="new-class-teams-count"
+											id="new-class-teams"
 											type="number"
 											min={1}
-											max={30}
+											max={20}
 											required
-											className={cn(textField(), "w-28 py-2 px-3 text-sm font-semibold")}
+											className={cn(textField(), "w-24 py-1.5 px-3 text-sm text-center font-bold")}
 											value={formTeamCount}
-											onChange={(e) =>
-												setFormTeamCount(Math.max(1, parseInt(e.target.value) || 1))
-											}
+											onChange={(e) => setFormTeamCount(Math.max(1, parseInt(e.target.value) || 1))}
 										/>
-										<span className="text-xs text-slate-500">
-											Hold (Hold 1, Hold 2 ...) med logins oprettes automatisk.
-										</span>
+										<p className="text-xs text-slate-500">
+											Der oprettes automatisk <strong>{formTeamCount} hold</strong> (Hold 1, Hold 2...)
+											med tilhørende brugerkonti.
+										</p>
 									</div>
 								</div>
 
@@ -614,7 +597,7 @@ export default function ClassManagement({
 										)}
 									>
 										{isSubmitting && <IconLoader2 size={14} className="animate-spin" />}
-										<span>Opret Klasse</span>
+										<span>Opret Klasse & Hold</span>
 									</button>
 								</div>
 							</form>
@@ -647,7 +630,7 @@ export default function ClassManagement({
 							)}
 
 							<form onSubmit={handleSaveForm} className="space-y-4">
-								{/* Class Name */}
+								{/* Name */}
 								<div>
 									<label
 										htmlFor="edit-class-name"
@@ -673,11 +656,15 @@ export default function ClassManagement({
 									>
 										Skole *
 									</label>
-									<SchoolSelector
-										value={formSchool}
-										onChange={setFormSchool}
-										existingSchools={schools}
+									<SearchableSelect<string>
+										id="edit-class-school"
 										required
+										allowCustom
+										value={formSchool || null}
+										onChange={(val) => setFormSchool(val || "")}
+										options={schools.map((s) => ({ value: s, label: s }))}
+										placeholder="Vælg skole eller skriv en ny..."
+										leftIcon={<IconSchool size={16} />}
 									/>
 								</div>
 
@@ -687,19 +674,15 @@ export default function ClassManagement({
 										htmlFor="edit-class-teacher"
 										className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5"
 									>
-										Lærer / Kontaktperson
+										Underviser / Kontaktlærer (valgfri)
 									</label>
-									<div className="relative flex items-center">
-										<IconUser size={16} className="absolute left-3 text-slate-400" />
-										<input
-											id="edit-class-teacher"
-											type="text"
-											className={cn(textField(), "w-full pl-9 pr-3 py-2 text-sm")}
-											placeholder="f.eks. Susanne Hansen"
-											value={formTeacherName}
-											onChange={(e) => setFormTeacherName(e.target.value)}
-										/>
-									</div>
+									<input
+										id="edit-class-teacher"
+										type="text"
+										className={cn(textField(), "w-full py-2 px-3 text-sm")}
+										value={formTeacherName}
+										onChange={(e) => setFormTeacherName(e.target.value)}
+									/>
 								</div>
 
 								{/* Actions */}
@@ -731,26 +714,29 @@ export default function ClassManagement({
 					</div>
 				) : selectedClass ? (
 					/* View Class Details */
-					<div className="max-w-2xl mx-auto space-y-4">
-						{/* Class Header Card */}
+					<div className="max-w-3xl mx-auto space-y-4">
+						{/* Header Card */}
 						<div className={cn(card(), "p-5")}>
 							<div className="flex items-start justify-between">
 								<div className="flex items-center gap-3.5">
-									<div className="w-11 h-11 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
+									<div className="w-11 h-11 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center shrink-0 font-bold text-sm">
 										<IconSchool size={22} />
 									</div>
 									<div>
-										<div className="flex items-center gap-2">
-											<h2 className="text-xl font-bold text-slate-900">
-												{selectedClass.name}
-											</h2>
-											<span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700 flex items-center gap-1">
-												<IconBuildingCommunity size={13} />
-												{selectedClass.school}
-											</span>
-										</div>
-										<p className="text-xs text-slate-400 mt-0.5 font-mono">
-											Klasse #{selectedClass.id} · Event #{activeEventId}
+										<h2 className="text-xl font-bold text-slate-900">
+											{selectedClass.name}
+										</h2>
+										<p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
+											<span className="font-semibold text-slate-700">{selectedClass.school}</span>
+											{selectedClass.teacherName && (
+												<>
+													<span>·</span>
+													<span className="flex items-center gap-1">
+														<IconUser size={13} className="text-slate-400" />
+														{selectedClass.teacherName}
+													</span>
+												</>
+											)}
 										</p>
 									</div>
 								</div>
@@ -779,82 +765,59 @@ export default function ClassManagement({
 							</div>
 						</div>
 
-						{/* Class Information Grid */}
-						<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-							<div className={cn(card(), "p-4 space-y-1")}>
-								<div className="text-[11px] text-slate-400 font-semibold uppercase">
-									Tilknyttet Skole
-								</div>
-								<div className="flex items-center gap-1.5 text-slate-800 font-medium text-sm">
-									<IconBuildingCommunity size={16} className="text-slate-500" />
-									<span>{selectedClass.school}</span>
-								</div>
-							</div>
-
-							<div className={cn(card(), "p-4 space-y-1")}>
-								<div className="text-[11px] text-slate-400 font-semibold uppercase">
-									Lærer / Kontaktperson
-								</div>
-								<div className="flex items-center gap-1.5 text-slate-800 font-medium text-sm">
-									<IconUser size={16} className="text-slate-500" />
-									<span>{selectedClass.teacherName || "Ikke angivet"}</span>
-								</div>
-							</div>
-						</div>
-
-						{/* Teams in this class */}
+						{/* Teams inside this class */}
 						<div className={cn(card(), "p-5 space-y-3")}>
 							<div className="flex items-center justify-between">
 								<div>
 									<h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
 										<IconUsers size={16} className="text-slate-500" />
-										<span>Tilmeldte Hold ({selectedClassTeams.length})</span>
+										<span>Tilknyttede Hold ({selectedClassTeams.length})</span>
 									</h3>
 									<p className="text-[11px] text-slate-400 mt-0.5">
-										Hold der er oprettet for denne klasse
+										Hold, der er oprettet og knyttet til denne klasse
 									</p>
 								</div>
 								<Link
 									href={`/admin/${activeEventId}/teams?classId=${selectedClass.id}`}
 									className={cn(
 										button(),
-										"text-xs py-1 px-2.5 bg-slate-900 text-white border-transparent hover:bg-slate-800"
+										"text-xs py-1 px-2.5 bg-slate-900 text-white border-transparent hover:bg-slate-800 flex items-center gap-1"
 									)}
 								>
-									<IconPlus size={13} /> Opret nyt hold
+									<IconPlus size={13} /> Tilføj hold
 								</Link>
 							</div>
 
 							{selectedClassTeams.length === 0 ? (
-								<div className="p-5 rounded-lg bg-slate-50 border border-slate-200 text-center text-slate-400 text-xs">
-									Der er ingen hold tilknyttet denne klasse endnu.
+								<div className="p-6 rounded-lg bg-slate-50 border border-slate-200 text-center text-slate-400 text-xs">
+									<IconUsers size={24} className="mx-auto mb-1 opacity-40" />
+									<p className="font-medium text-slate-600">Ingen hold tilknyttet denne klasse endnu</p>
 								</div>
 							) : (
-								<div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
 									{selectedClassTeams.map((team) => (
 										<Link
 											key={team.id}
 											href={`/admin/${activeEventId}/teams/${team.id}`}
-											className="p-3 rounded-lg border border-slate-200 hover:border-slate-300 bg-slate-50/50 hover:bg-slate-50 transition-colors flex items-center justify-between group"
+											className="p-3 rounded-lg border border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white transition-colors flex items-center justify-between group"
 										>
 											<div className="flex items-center gap-2.5 min-w-0">
-												<div className="w-7 h-7 rounded bg-slate-100 text-slate-700 flex items-center justify-center shrink-0 text-xs font-bold">
+												<div className="w-7 h-7 rounded bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 font-medium text-xs">
 													<IconUsers size={14} />
 												</div>
 												<div className="min-w-0">
-													<div className="font-medium text-xs text-slate-900 group-hover:text-slate-800 truncate flex items-center gap-1">
-														<span>{team.name}</span>
-														{!team.isConfigured && (
-															<span className="text-[9px] px-1 py-0.2 rounded font-semibold bg-amber-100 text-amber-800 shrink-0">
-																Ny
-															</span>
-														)}
-													</div>
-													<div className="text-[10px] text-slate-400 font-mono">
-														ID #{team.id}
-													</div>
+													<p className="font-semibold text-xs text-slate-800 truncate">
+														{team.name}
+													</p>
+													<p className="text-[11px] text-slate-400">
+														{team.isConfigured ? "Konfigureret" : "Afventer opsætning"}
+													</p>
 												</div>
 											</div>
+											<IconArrowRight
+												size={14}
+												className="text-slate-300 group-hover:text-slate-700 transition-colors shrink-0"
+											/>
 										</Link>
 									))}
 								</div>
@@ -900,13 +863,14 @@ export default function ClassManagement({
 
 						<p className="text-xs text-slate-600">
 							Er du sikker på, at du vil slette klassen{" "}
-							<span className="font-semibold text-slate-900">&quot;{classToDelete.name}&quot;</span> ({classToDelete.school})?
+							<span className="font-semibold text-slate-900">&quot;{classToDelete.name}&quot;</span>?
 						</p>
 
 						<div className="p-2.5 rounded-md bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2">
 							<IconAlertTriangle size={15} className="text-amber-600 shrink-0 mt-0.5" />
 							<span>
-								<strong>Bemærk:</strong> Sletning af denne klasse vil også automatisk slette alle tilknyttede hold og deres konti!
+								<strong>Advarsel:</strong> Sletning af denne klasse vil også slette alle{" "}
+								{teams.filter((t) => t.classId === classToDelete.id).length} tilknyttede hold, deres brugerkonti og resultater!
 							</span>
 						</div>
 

@@ -133,7 +133,7 @@ export function EventShell({ pageTitle, children }: ShellProps) {
 							</span>
 						</div>
 
-						<div className="w-56 shrink-0">
+						<div className="min-w-fit shrink-0">
 							<EventSelector />
 						</div>
 					</div>
