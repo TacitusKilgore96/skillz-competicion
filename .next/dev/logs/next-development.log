@@ -7,3 +7,18 @@
 {"timestamp":"00:02:46.598","source":"Server","level":"LOG","message":"✓ Compiled in 74ms"}
 {"timestamp":"00:06:16.036","source":"Server","level":"LOG","message":"✓ Compiled in 171ms"}
 {"timestamp":"00:07:39.558","source":"Server","level":"LOG","message":"✓ Compiled in 113ms"}
+{"timestamp":"00:01:29.509","source":"Browser","level":"LOG","message":"timeData 120"}
+{"timestamp":"00:01:29.509","source":"Browser","level":"LOG","message":"timeData 120"}
+{"timestamp":"00:01:29.604","source":"Browser","level":"LOG","message":"timeData 120"}
+{"timestamp":"00:01:29.604","source":"Browser","level":"LOG","message":"timeData 120"}
+{"timestamp":"00:01:29.604","source":"Browser","level":"LOG","message":"timeData 120"}
+{"timestamp":"00:01:29.604","source":"Browser","level":"LOG","message":"timeData 120"}
+{"timestamp":"00:01:29.604","source":"Browser","level":"LOG","message":"timeData 120"}
+{"timestamp":"00:01:29.604","source":"Browser","level":"LOG","message":"timeData 120"}
+{"timestamp":"00:01:49.252","source":"Server","level":"LOG","message":"○ Compiling /home ..."}
+{"timestamp":"00:02:10.427","source":"Browser","level":"LOG","message":"timeData 120"}
+{"timestamp":"00:02:10.427","source":"Browser","level":"LOG","message":"timeData 120"}
+{"timestamp":"00:02:10.526","source":"Browser","level":"LOG","message":"timeData 120"}
+{"timestamp":"00:02:10.526","source":"Browser","level":"LOG","message":"timeData 120"}
+{"timestamp":"00:02:10.534","source":"Browser","level":"LOG","message":"timeData 120"}
+{"timestamp":"00:02:10.534","source":"Browser","level":"LOG","message":"timeData 120"}

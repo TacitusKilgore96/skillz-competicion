@@ -1,4 +1,4 @@
-import Login from "@/componnent/Login";
+import Login from "@/components/Login";
 export default function LoginPage() {
   return (
     <main className="min-h-screen px-6 py-12">

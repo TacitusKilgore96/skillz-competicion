@@ -1,5 +1,11 @@
 {
-  "/page": "app/page.js",
-  "/resultspage/page": "app/resultspage/page.js",
-  "/teampage/page": "app/teampage/page.js"
+  "/(main)/home/page": "app/(main)/home/page.js",
+  "/(main)/login/page": "app/(main)/login/page.js",
+  "/(main)/page": "app/(main)/page.js",
+  "/(main)/results/page": "app/(main)/results/page.js",
+  "/(main)/station/page": "app/(main)/station/page.js",
+  "/(main)/teacher/page": "app/(main)/teacher/page.js",
+  "/(main)/team/page": "app/(main)/team/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/admin/page": "app/admin/page.js"
 }
