@@ -21,6 +21,11 @@ const teams: Team[] = [
   { id: 3, name: "Træværksted", visited: false, duration: "--:--" },
   { id: 4, name: "Teknik", visited: true, duration: "01:48" },
   { id: 5, name: "Førstehjælp", visited: false, duration: "--:--" },
+  { id: 6, name: "IT", visited: true, duration: "01:41" },
+  { id: 7, name: "Design", visited: true, duration: "01:38" },
+  { id: 8, name: "Service", visited: true, duration: "01:28" },
+  { id: 9, name: "Natur & Miljø", visited: true, duration: "01:18" },
+  { id: 10, name: "Innovation", visited: true, duration: "01:58" }
 ];
 
 const teamBadgeIcons: Record<number, string> = {
@@ -29,9 +34,14 @@ const teamBadgeIcons: Record<number, string> = {
   3: "/images/hammer-solid-full.svg",
   4: "/images/gear-solid-full.svg",
   5: "/images/briefcase-medical-solid-full.svg",
+  6: "/images/laptop-solid-full.svg",
+  7: "/images/pencil-solid-full.svg",
+  8: "/images/people-group-solid-full.svg",
+  9: "/images/leaf-solid-full.svg",
+  10: "/images/lightbulb-solid-full.svg",
 };
 
-export default function StationPage() {
+export default function team() {
   const [teamStatuses, setTeamStatuses] = useState(teams);
 
   const toggleVisit = (id: number) => {
@@ -65,6 +75,11 @@ export default function StationPage() {
     return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
   };
 
+  const bestDuration=
+  validDurations.length > 0
+  ? Math.min(...validDurations)
+  : 0;
+
   return (
     <div className="min-h-screen bg-background text-primary">
       <div className="flex min-h-screen">
@@ -79,7 +94,7 @@ export default function StationPage() {
 
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-light font-bold text-green-dark">
-                F
+                f
               </div>
               <div className="hidden text-left sm:block">
                 <div className="text-sm font-semibold">
@@ -121,7 +136,7 @@ export default function StationPage() {
             </div>
 
             {/* TOP CARDS */}
-            <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
+            <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 
               <StatCard
                 title="Jeres Samlede Tid"
@@ -133,6 +148,12 @@ export default function StationPage() {
                 title="Gennemsnit Pr. Post"
                 value={formatDuration(averageDurationSeconds)}
                 description="mm:ss"
+              />
+
+              <StatCard
+              title="Bedste Tid"
+              value={validDurations.length > 0 ? formatDuration(bestDuration) : "--:--"}
+              description="mm:ss"
               />
 
             </div>
@@ -158,7 +179,7 @@ export default function StationPage() {
 
                 </div>
 
-                <div className="divide-y divide-border">
+                <div className="divide-y divide-border overflow-scroll h-120">
 
                   {teamStatuses.map((team) => (
 
@@ -243,7 +264,7 @@ export default function StationPage() {
                       </div>
                     </div>
 
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-warning-background text-xl">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-dark text-xl">
                       ✅
                     </div>
 
