@@ -38,10 +38,12 @@ export interface CreateStationTimeDTO {
 	teamId: number;
 	timeSeconds: number;
 	points?: number;
+	completedAt?: string;
 }
 
 export interface UpdateStationTimeDTO {
 	teamId?: number;
 	timeSeconds?: number;
 	points?: number;
+	completedAt?: string;
 }

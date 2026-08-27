@@ -38,9 +38,11 @@ export function EventShell({ pageTitle, children }: ShellProps) {
 
 	useEffect(() => {
 		getCurrentUser().then((u) => {
-			if (!u || u.type !== "ORGANIZER") {
-				const currentPath = window.location.pathname + window.location.search;
+			const currentPath = window.location.pathname + window.location.search;
+			if (!u) {
 				window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+			} else if (u.type !== "ORGANIZER") {
+				window.location.href = `/unauthorized?target=${encodeURIComponent(currentPath)}`;
 			} else {
 				setUser(u);
 				setAuthChecking(false);

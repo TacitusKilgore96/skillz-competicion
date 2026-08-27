@@ -25,6 +25,9 @@ export function proxy(request: NextRequest) {
 	const loginUrl = new URL("/login", request.url);
 	loginUrl.searchParams.set("redirect", fullPath);
 
+	const unauthorizedUrl = new URL("/unauthorized", request.url);
+	unauthorizedUrl.searchParams.set("target", fullPath);
+
 	// 1. If visiting login page while already authenticated
 	if (isLoginPage && user) {
 		const redirectParam = request.nextUrl.searchParams.get("redirect");
@@ -46,7 +49,7 @@ export function proxy(request: NextRequest) {
 			return NextResponse.redirect(loginUrl);
 		}
 		if (user.type !== "ORGANIZER") {
-			return NextResponse.redirect(loginUrl);
+			return NextResponse.redirect(unauthorizedUrl);
 		}
 	}
 
@@ -56,7 +59,7 @@ export function proxy(request: NextRequest) {
 			return NextResponse.redirect(loginUrl);
 		}
 		if (user.type !== "POST_GUARD" && user.type !== "ORGANIZER") {
-			return NextResponse.redirect(loginUrl);
+			return NextResponse.redirect(unauthorizedUrl);
 		}
 	}
 
@@ -66,7 +69,7 @@ export function proxy(request: NextRequest) {
 			return NextResponse.redirect(loginUrl);
 		}
 		if (user.type !== "TEAM" && user.type !== "ORGANIZER") {
-			return NextResponse.redirect(loginUrl);
+			return NextResponse.redirect(unauthorizedUrl);
 		}
 	}
 
