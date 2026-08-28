@@ -1,5 +1,3 @@
-import fs from "fs/promises";
-import path from "path";
 import { EventModel, CreateEventDTO, UpdateEventDTO } from "@/models/EventModel";
 import {
 	AccountModel,
@@ -25,60 +23,7 @@ import {
 	CreateStationTimeDTO,
 	UpdateStationTimeDTO,
 } from "@/models/StationModel";
-
-const DB_PATH = path.join(process.cwd(), "src", "db.local.json");
-
-interface DatabaseSchema {
-	events: EventModel[];
-	accounts: AccountModel[];
-	classes: ClassModel[];
-	teams: TeamModel[];
-	stations: StationModel[];
-	stationTimes: StationTimeModel[];
-}
-
-const DEFAULT_DB: DatabaseSchema = {
-	events: [
-		{
-			id: 0,
-			title: "Event Title",
-			date: "2023-09-20",
-			status: "CREATED",
-			durationMinutes: 120,
-			blackoutMinutes: 30,
-			startedAt: null,
-			endedAt: null,
-			isConfirmedOver: false,
-		},
-	],
-	accounts: [],
-	classes: [],
-	teams: [],
-	stations: [],
-	stationTimes: [],
-};
-
-async function readDb(): Promise<DatabaseSchema> {
-	try {
-		const raw = await fs.readFile(DB_PATH, "utf-8");
-		const parsed = JSON.parse(raw);
-		return {
-			events: parsed.events || [],
-			accounts: parsed.accounts || [],
-			classes: parsed.classes || [],
-			teams: parsed.teams || [],
-			stations: parsed.stations || [],
-			stationTimes: parsed.stationTimes || [],
-		};
-	} catch (err: unknown) {
-		console.error("Error reading database:", err);
-		return DEFAULT_DB;
-	}
-}
-
-async function writeDb(data: DatabaseSchema): Promise<void> {
-	await fs.writeFile(DB_PATH, JSON.stringify(data, null, 2), "utf-8");
-}
+import { pool, ensureDatabaseReady } from "./pgPool";
 
 function generateRandomPassword(): string {
 	const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -102,27 +47,57 @@ function slugify(text: string): string {
 
 // ---------------- EVENTS ----------------
 export async function getEvents(search?: string): Promise<EventModel[]> {
-	const db = await readDb();
-	if (!search) return db.events;
-	const query = search.toLowerCase().trim();
-	return db.events.filter(
-		(e) =>
-			e.title.toLowerCase().includes(query) ||
-			(e.date && e.date.toLowerCase().includes(query)) ||
-			(e.location && e.location.toLowerCase().includes(query)) ||
-			(e.description && e.description.toLowerCase().includes(query))
+	await ensureDatabaseReady();
+	if (!search) {
+		const res = await pool.query<EventModel>(
+			`SELECT id, title, date, description, location, status,
+			        duration_minutes AS "durationMinutes",
+			        blackout_minutes AS "blackoutMinutes",
+			        started_at AS "startedAt",
+			        ended_at AS "endedAt",
+			        is_confirmed_over AS "isConfirmedOver"
+			 FROM events ORDER BY id ASC`
+		);
+		return res.rows;
+	}
+
+	const query = `%${search.toLowerCase().trim()}%`;
+	const res = await pool.query<EventModel>(
+		`SELECT id, title, date, description, location, status,
+		        duration_minutes AS "durationMinutes",
+		        blackout_minutes AS "blackoutMinutes",
+		        started_at AS "startedAt",
+		        ended_at AS "endedAt",
+		        is_confirmed_over AS "isConfirmedOver"
+		 FROM events
+		 WHERE LOWER(title) LIKE $1
+		    OR LOWER(date) LIKE $1
+		    OR LOWER(COALESCE(location, '')) LIKE $1
+		    OR LOWER(COALESCE(description, '')) LIKE $1
+		 ORDER BY id ASC`,
+		[query]
 	);
+	return res.rows;
 }
 
 export async function getEventById(id: number): Promise<EventModel | null> {
-	const db = await readDb();
-	const event = db.events.find((e) => e.id === id);
-	return event ?? null;
+	await ensureDatabaseReady();
+	const res = await pool.query<EventModel>(
+		`SELECT id, title, date, description, location, status,
+		        duration_minutes AS "durationMinutes",
+		        blackout_minutes AS "blackoutMinutes",
+		        started_at AS "startedAt",
+		        ended_at AS "endedAt",
+		        is_confirmed_over AS "isConfirmedOver"
+		 FROM events WHERE id = $1`,
+		[id]
+	);
+	return res.rows[0] ?? null;
 }
 
 export async function createEvent(data: CreateEventDTO): Promise<EventModel> {
-	const db = await readDb();
-	const trimmedTitle = data.title.trim();
+	await ensureDatabaseReady();
+	const trimmedTitle = data.title?.trim();
 	if (!trimmedTitle) {
 		throw new Error("Event titel er påkrævet");
 	}
@@ -130,104 +105,120 @@ export async function createEvent(data: CreateEventDTO): Promise<EventModel> {
 		throw new Error("Dato er påkrævet");
 	}
 
-	const maxId = db.events.length > 0 ? Math.max(...db.events.map((e) => e.id)) : -1;
-	const newEvent: EventModel = {
-		id: maxId + 1,
-		title: trimmedTitle,
-		date: data.date,
-		location: data.location?.trim() || undefined,
-		description: data.description?.trim() || undefined,
-		status: "CREATED",
-		durationMinutes: data.durationMinutes || 120,
-		blackoutMinutes: data.blackoutMinutes !== undefined ? data.blackoutMinutes : 30,
-		startedAt: null,
-		endedAt: null,
-		isConfirmedOver: false,
-	};
-
-	db.events.push(newEvent);
-	await writeDb(db);
-	return newEvent;
+	const res = await pool.query<EventModel>(
+		`INSERT INTO events (title, date, location, description, status, duration_minutes, blackout_minutes, started_at, ended_at, is_confirmed_over)
+		 VALUES ($1, $2, $3, $4, 'CREATED', $5, $6, NULL, NULL, FALSE)
+		 RETURNING id, title, date, description, location, status,
+		           duration_minutes AS "durationMinutes",
+		           blackout_minutes AS "blackoutMinutes",
+		           started_at AS "startedAt",
+		           ended_at AS "endedAt",
+		           is_confirmed_over AS "isConfirmedOver"`,
+		[
+			trimmedTitle,
+			data.date,
+			data.location?.trim() || null,
+			data.description?.trim() || null,
+			data.durationMinutes || 120,
+			data.blackoutMinutes !== undefined ? data.blackoutMinutes : 30,
+		]
+	);
+	return res.rows[0];
 }
 
 export async function updateEvent(
 	id: number,
 	data: UpdateEventDTO
 ): Promise<EventModel> {
-	const db = await readDb();
-	const index = db.events.findIndex((e) => e.id === id);
-	if (index === -1) {
+	await ensureDatabaseReady();
+	const existing = await getEventById(id);
+	if (!existing) {
 		throw new Error(`Event med id ${id} blev ikke fundet`);
 	}
 
-	const current = db.events[index];
 	if (data.title !== undefined) {
 		const trimmed = data.title.trim();
 		if (!trimmed) throw new Error("Event titel må ikke være tom");
-		current.title = trimmed;
+		existing.title = trimmed;
 	}
 	if (data.date !== undefined) {
 		if (!data.date) throw new Error("Dato må ikke være tom");
-		current.date = data.date;
+		existing.date = data.date;
 	}
 	if (data.location !== undefined) {
-		current.location = data.location.trim() || undefined;
+		existing.location = data.location.trim() || undefined;
 	}
 	if (data.description !== undefined) {
-		current.description = data.description.trim() || undefined;
+		existing.description = data.description.trim() || undefined;
 	}
 	if (data.status !== undefined) {
-		current.status = data.status;
+		existing.status = data.status;
 	}
 	if (data.durationMinutes !== undefined) {
-		current.durationMinutes = data.durationMinutes;
+		existing.durationMinutes = data.durationMinutes;
 	}
 	if (data.blackoutMinutes !== undefined) {
-		current.blackoutMinutes = data.blackoutMinutes;
+		existing.blackoutMinutes = data.blackoutMinutes;
 	}
 	if (data.startedAt !== undefined) {
-		current.startedAt = data.startedAt;
+		existing.startedAt = data.startedAt;
 	}
 	if (data.endedAt !== undefined) {
-		current.endedAt = data.endedAt;
+		existing.endedAt = data.endedAt;
 	}
 	if (data.isConfirmedOver !== undefined) {
-		current.isConfirmedOver = data.isConfirmedOver;
+		existing.isConfirmedOver = data.isConfirmedOver;
 	}
 
-	db.events[index] = current;
-	await writeDb(db);
-	return current;
+	const res = await pool.query<EventModel>(
+		`UPDATE events
+		 SET title = $1, date = $2, location = $3, description = $4, status = $5,
+		     duration_minutes = $6, blackout_minutes = $7, started_at = $8, ended_at = $9, is_confirmed_over = $10
+		 WHERE id = $11
+		 RETURNING id, title, date, description, location, status,
+		           duration_minutes AS "durationMinutes",
+		           blackout_minutes AS "blackoutMinutes",
+		           started_at AS "startedAt",
+		           ended_at AS "endedAt",
+		           is_confirmed_over AS "isConfirmedOver"`,
+		[
+			existing.title,
+			existing.date,
+			existing.location || null,
+			existing.description || null,
+			existing.status || "CREATED",
+			existing.durationMinutes || 120,
+			existing.blackoutMinutes !== undefined ? existing.blackoutMinutes : 30,
+			existing.startedAt || null,
+			existing.endedAt || null,
+			existing.isConfirmedOver || false,
+			id,
+		]
+	);
+
+	return res.rows[0];
 }
 
 export async function deleteEvent(id: number): Promise<boolean> {
-	const db = await readDb();
-	const index = db.events.findIndex((e) => e.id === id);
-	if (index === -1) {
+	await ensureDatabaseReady();
+	const existing = await getEventById(id);
+	if (!existing) {
 		throw new Error(`Event med id ${id} blev ikke fundet`);
 	}
 
-	// Remove event
-	db.events.splice(index, 1);
-
-	// Find classes, teams, stations for this event to cascade accounts
-	const classIds = db.classes.filter((c) => c.eventId === id).map((c) => c.id);
-	const teamIds = db.teams.filter((t) => t.eventId === id).map((t) => t.id);
-	const stationIds = db.stations.filter((s) => s.eventId === id).map((s) => s.id);
-
-	db.classes = db.classes.filter((c) => c.eventId !== id);
-	db.teams = db.teams.filter((t) => t.eventId !== id);
-	db.stations = db.stations.filter((s) => s.eventId !== id);
-	db.stationTimes = db.stationTimes.filter((st) => st.eventId !== id);
-	db.accounts = db.accounts.filter(
-		(a) =>
-			!(
-				(a.teamId && teamIds.includes(a.teamId)) ||
-				(a.stationId && stationIds.includes(a.stationId))
-			)
+	// Delete related accounts for teams and stations under this event
+	await pool.query(
+		`DELETE FROM accounts
+		 WHERE id IN (
+		     SELECT account_id FROM teams WHERE event_id = $1 AND account_id IS NOT NULL
+		     UNION
+		     SELECT account_id FROM stations WHERE event_id = $1 AND account_id IS NOT NULL
+		 )`,
+		[id]
 	);
 
-	await writeDb(db);
+	// Cascade delete handles classes, teams, stations, station_times
+	await pool.query("DELETE FROM events WHERE id = $1", [id]);
 	return true;
 }
 
@@ -236,97 +227,118 @@ export async function getAccounts(
 	search?: string,
 	type?: AccountType
 ): Promise<AccountModel[]> {
-	const db = await readDb();
-	let results = db.accounts;
+	await ensureDatabaseReady();
+	const conditions: string[] = [];
+	const params: unknown[] = [];
+
 	if (type) {
-		results = results.filter((a) => a.type === type);
+		params.push(type);
+		conditions.push(`type = $${params.length}`);
 	}
+
 	if (search) {
-		const q = search.toLowerCase();
-		results = results.filter((a) => a.username.toLowerCase().includes(q));
+		params.push(`%${search.toLowerCase().trim()}%`);
+		conditions.push(`LOWER(username) LIKE $${params.length}`);
 	}
-	return results;
+
+	const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+	const res = await pool.query<AccountModel>(
+		`SELECT id, type, username, password, team_id AS "teamId", station_id AS "stationId"
+		 FROM accounts
+		 ${whereClause}
+		 ORDER BY id ASC`,
+		params
+	);
+	return res.rows;
 }
 
 export async function getAccountById(id: number): Promise<AccountModel | null> {
-	const db = await readDb();
-	const account = db.accounts.find((a) => a.id === id);
-	return account ?? null;
+	await ensureDatabaseReady();
+	const res = await pool.query<AccountModel>(
+		`SELECT id, type, username, password, team_id AS "teamId", station_id AS "stationId"
+		 FROM accounts WHERE id = $1`,
+		[id]
+	);
+	return res.rows[0] ?? null;
 }
 
 export async function createAccount(data: CreateAccountDTO): Promise<AccountModel> {
-	const db = await readDb();
-	const trimmedUsername = data.username.trim();
+	await ensureDatabaseReady();
+	const trimmedUsername = data.username?.trim();
 	if (!trimmedUsername) {
 		throw new Error("Brugernavn er påkrævet");
 	}
 
-	const existing = db.accounts.find(
-		(a) => a.username.toLowerCase() === trimmedUsername.toLowerCase()
+	const existing = await pool.query(
+		"SELECT id FROM accounts WHERE LOWER(username) = LOWER($1)",
+		[trimmedUsername]
 	);
-	if (existing) {
+	if (existing.rows.length > 0) {
 		throw new Error(`En konto med brugernavnet "${trimmedUsername}" findes allerede`);
 	}
 
-	const maxId = db.accounts.length > 0 ? Math.max(...db.accounts.map((a) => a.id)) : -1;
-	const newAccount: AccountModel = {
-		id: maxId + 1,
-		username: trimmedUsername,
-		password: data.password || generateRandomPassword(),
-		type: data.type,
-		teamId: data.teamId,
-		stationId: data.stationId,
-	};
-
-	db.accounts.push(newAccount);
-	await writeDb(db);
-	return newAccount;
+	const password = data.password?.trim() || generateRandomPassword();
+	const res = await pool.query<AccountModel>(
+		`INSERT INTO accounts (type, username, password, team_id, station_id)
+		 VALUES ($1, $2, $3, $4, $5)
+		 RETURNING id, type, username, password, team_id AS "teamId", station_id AS "stationId"`,
+		[data.type, trimmedUsername, password, data.teamId ?? null, data.stationId ?? null]
+	);
+	return res.rows[0];
 }
 
 export async function updateAccount(
 	id: number,
 	data: UpdateAccountDTO
 ): Promise<AccountModel> {
-	const db = await readDb();
-	const index = db.accounts.findIndex((a) => a.id === id);
-	if (index === -1) {
+	await ensureDatabaseReady();
+	const existing = await getAccountById(id);
+	if (!existing) {
 		throw new Error(`Konto med id ${id} blev ikke fundet`);
 	}
 
-	const current = db.accounts[index];
+	let username = existing.username;
 	if (data.username !== undefined) {
 		const trimmed = data.username.trim();
 		if (!trimmed) throw new Error("Brugernavn må ikke være tomt");
-		const existing = db.accounts.find(
-			(a) => a.id !== id && a.username.toLowerCase() === trimmed.toLowerCase()
+		const check = await pool.query(
+			"SELECT id FROM accounts WHERE LOWER(username) = LOWER($1) AND id <> $2",
+			[trimmed, id]
 		);
-		if (existing) {
+		if (check.rows.length > 0) {
 			throw new Error(`En konto med brugernavnet "${trimmed}" findes allerede`);
 		}
-		current.username = trimmed;
+		username = trimmed;
 	}
+
+	let password = existing.password;
 	if (data.password !== undefined) {
 		const trimmed = data.password.trim();
 		if (!trimmed) throw new Error("Adgangskode må ikke være tom");
-		current.password = trimmed;
+		password = trimmed;
 	}
-	if (data.type !== undefined) current.type = data.type;
-	if (data.teamId !== undefined) current.teamId = data.teamId;
-	if (data.stationId !== undefined) current.stationId = data.stationId;
 
-	db.accounts[index] = current;
-	await writeDb(db);
-	return current;
+	const type = data.type !== undefined ? data.type : existing.type;
+	const teamId = data.teamId !== undefined ? data.teamId : existing.teamId;
+	const stationId = data.stationId !== undefined ? data.stationId : existing.stationId;
+
+	const res = await pool.query<AccountModel>(
+		`UPDATE accounts
+		 SET type = $1, username = $2, password = $3, team_id = $4, station_id = $5
+		 WHERE id = $6
+		 RETURNING id, type, username, password, team_id AS "teamId", station_id AS "stationId"`,
+		[type, username, password, teamId ?? null, stationId ?? null, id]
+	);
+	return res.rows[0];
 }
 
 export async function deleteAccount(id: number): Promise<boolean> {
-	const db = await readDb();
-	const index = db.accounts.findIndex((a) => a.id === id);
-	if (index === -1) {
+	await ensureDatabaseReady();
+	const existing = await getAccountById(id);
+	if (!existing) {
 		throw new Error(`Konto med id ${id} blev ikke fundet`);
 	}
-	db.accounts.splice(index, 1);
-	await writeDb(db);
+	await pool.query("DELETE FROM accounts WHERE id = $1", [id]);
 	return true;
 }
 
@@ -335,76 +347,88 @@ export async function getClasses(
 	eventId?: number,
 	search?: string
 ): Promise<ClassModel[]> {
-	const db = await readDb();
-	let results = db.classes;
+	await ensureDatabaseReady();
+	const conditions: string[] = [];
+	const params: unknown[] = [];
+
 	if (eventId !== undefined) {
-		results = results.filter((c) => c.eventId === eventId);
+		params.push(eventId);
+		conditions.push(`event_id = $${params.length}`);
 	}
+
 	if (search) {
-		const q = search.toLowerCase();
-		results = results.filter(
-			(c) =>
-				c.name.toLowerCase().includes(q) ||
-				c.school.toLowerCase().includes(q)
-		);
+		params.push(`%${search.toLowerCase().trim()}%`);
+		conditions.push(`(LOWER(name) LIKE $${params.length} OR LOWER(school) LIKE $${params.length})`);
 	}
-	return results;
+
+	const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+	const res = await pool.query<ClassModel>(
+		`SELECT id, event_id AS "eventId", name, school, teacher_name AS "teacherName"
+		 FROM classes
+		 ${whereClause}
+		 ORDER BY id ASC`,
+		params
+	);
+	return res.rows;
 }
 
 export async function getClassById(id: number): Promise<ClassModel | null> {
-	const db = await readDb();
-	const item = db.classes.find((c) => c.id === id);
-	return item ?? null;
+	await ensureDatabaseReady();
+	const res = await pool.query<ClassModel>(
+		`SELECT id, event_id AS "eventId", name, school, teacher_name AS "teacherName"
+		 FROM classes WHERE id = $1`,
+		[id]
+	);
+	return res.rows[0] ?? null;
 }
 
 export async function createClass(data: CreateClassDTO): Promise<ClassModel> {
-	const db = await readDb();
-	const trimmedName = data.name.trim();
-	const trimmedSchool = data.school.trim();
+	await ensureDatabaseReady();
+	const trimmedName = data.name?.trim();
+	const trimmedSchool = data.school?.trim();
 	if (!trimmedName) throw new Error("Klassenavn er påkrævet");
 	if (!trimmedSchool) throw new Error("Skole er påkrævet");
 
-	const maxId = db.classes.length > 0 ? Math.max(...db.classes.map((c) => c.id)) : -1;
-	const newClass: ClassModel = {
-		id: maxId + 1,
-		name: trimmedName,
-		school: trimmedSchool,
-		eventId: data.eventId,
-		teacherName: data.teacherName?.trim() || undefined,
-	};
+	const res = await pool.query<ClassModel>(
+		`INSERT INTO classes (event_id, name, school, teacher_name)
+		 VALUES ($1, $2, $3, $4)
+		 RETURNING id, event_id AS "eventId", name, school, teacher_name AS "teacherName"`,
+		[data.eventId, trimmedName, trimmedSchool, data.teacherName?.trim() || null]
+	);
+	const newClass = res.rows[0];
 
-	db.classes.push(newClass);
-
-	// Auto-generate teams if initialTeamsCount / teamCount provided
+	// Auto-generate teams & accounts if initialTeamsCount / teamCount provided
 	const count = data.teamCount || data.initialTeamsCount || 0;
 	for (let i = 1; i <= count; i++) {
 		const teamName = `Hold ${i}`;
-		const maxTeamId = db.teams.length > 0 ? Math.max(...db.teams.map((t) => t.id)) : -1;
-		const teamId = maxTeamId + 1;
-		const maxAccId = db.accounts.length > 0 ? Math.max(...db.accounts.map((a) => a.id)) : -1;
-		const accId = maxAccId + 1;
+		const password = generateRandomPassword();
 
-		const teamAccount: AccountModel = {
-			id: accId,
-			username: `${slugify(trimmedName)}_hold_${i}_${teamId}`,
-			password: generateRandomPassword(),
-			type: "TEAM",
-			teamId: teamId,
-		};
-		db.accounts.push(teamAccount);
+		// Create team account
+		const accRes = await pool.query<AccountModel>(
+			`INSERT INTO accounts (type, username, password)
+			 VALUES ('TEAM', $1, $2)
+			 RETURNING id, type, username, password, team_id AS "teamId", station_id AS "stationId"`,
+			[`${slugify(trimmedName)}_hold_${i}_${Date.now()}_${i}`, password]
+		);
+		const account = accRes.rows[0];
 
-		const team: TeamModel = {
-			id: teamId,
-			eventId: data.eventId,
-			classId: newClass.id,
-			accountId: accId,
-			name: teamName,
-			isConfigured: false,
-		};
-		db.teams.push(team);
+		// Create team
+		const teamRes = await pool.query<TeamModel>(
+			`INSERT INTO teams (event_id, class_id, account_id, name, is_configured)
+			 VALUES ($1, $2, $3, $4, FALSE)
+			 RETURNING id, event_id AS "eventId", class_id AS "classId", account_id AS "accountId", name, image, is_configured AS "isConfigured"`,
+			[data.eventId, newClass.id, account.id, teamName]
+		);
+		const team = teamRes.rows[0];
+
+		// Update account with teamId and refined username
+		const finalUsername = `${slugify(trimmedName)}_hold_${i}_${team.id}`;
+		await pool.query(
+			`UPDATE accounts SET username = $1, team_id = $2 WHERE id = $3`,
+			[finalUsername, team.id, account.id]
+		);
 	}
 
-	await writeDb(db);
 	return newClass;
 }
 
@@ -412,58 +436,67 @@ export async function updateClass(
 	id: number,
 	data: UpdateClassDTO
 ): Promise<ClassModel> {
-	const db = await readDb();
-	const index = db.classes.findIndex((c) => c.id === id);
-	if (index === -1) {
+	await ensureDatabaseReady();
+	const existing = await getClassById(id);
+	if (!existing) {
 		throw new Error(`Klasse med id ${id} blev ikke fundet`);
 	}
 
-	const current = db.classes[index];
+	let name = existing.name;
 	if (data.name !== undefined) {
 		const trimmed = data.name.trim();
 		if (!trimmed) throw new Error("Klassenavn må ikke være tomt");
-		current.name = trimmed;
+		name = trimmed;
 	}
+
+	let school = existing.school;
 	if (data.school !== undefined) {
 		const trimmed = data.school.trim();
 		if (!trimmed) throw new Error("Skole må ikke være tom");
-		current.school = trimmed;
-	}
-	if (data.teacherName !== undefined) {
-		current.teacherName = data.teacherName.trim() || undefined;
+		school = trimmed;
 	}
 
-	db.classes[index] = current;
-	await writeDb(db);
-	return current;
+	const teacherName = data.teacherName !== undefined ? data.teacherName.trim() || null : (existing.teacherName || null);
+
+	const res = await pool.query<ClassModel>(
+		`UPDATE classes
+		 SET name = $1, school = $2, teacher_name = $3
+		 WHERE id = $4
+		 RETURNING id, event_id AS "eventId", name, school, teacher_name AS "teacherName"`,
+		[name, school, teacherName, id]
+	);
+	return res.rows[0];
 }
 
 export async function deleteClass(id: number): Promise<boolean> {
-	const db = await readDb();
-	const index = db.classes.findIndex((c) => c.id === id);
-	if (index === -1) {
+	await ensureDatabaseReady();
+	const existing = await getClassById(id);
+	if (!existing) {
 		throw new Error(`Klasse med id ${id} blev ikke fundet`);
 	}
-	db.classes.splice(index, 1);
 
-	// Also delete teams in this class
-	const teamIds = db.teams.filter((t) => t.classId === id).map((t) => t.id);
-	db.teams = db.teams.filter((t) => t.classId !== id);
-	db.stationTimes = db.stationTimes.filter((st) => !teamIds.includes(st.teamId));
-	db.accounts = db.accounts.filter(
-		(a) => !(a.teamId && teamIds.includes(a.teamId))
+	// Delete accounts of teams in this class
+	await pool.query(
+		`DELETE FROM accounts
+		 WHERE id IN (SELECT account_id FROM teams WHERE class_id = $1 AND account_id IS NOT NULL)`,
+		[id]
 	);
 
-	await writeDb(db);
+	await pool.query("DELETE FROM classes WHERE id = $1", [id]);
 	return true;
 }
 
 export async function getUniqueSchools(eventId?: number): Promise<string[]> {
-	const db = await readDb();
-	const filtered =
-		eventId !== undefined ? db.classes.filter((c) => c.eventId === eventId) : db.classes;
-	const schools = Array.from(new Set(filtered.map((c) => c.school).filter(Boolean)));
-	return schools.sort();
+	await ensureDatabaseReady();
+	const res = await pool.query<{ school: string }>(
+		`SELECT DISTINCT school
+		 FROM classes
+		 WHERE ($1::int IS NULL OR event_id = $1)
+		   AND school IS NOT NULL AND school <> ''
+		 ORDER BY school ASC`,
+		[eventId ?? null]
+	);
+	return res.rows.map((r) => r.school);
 }
 
 // ---------------- TEAMS ----------------
@@ -472,100 +505,137 @@ export async function getTeams(
 	classId?: number,
 	search?: string
 ): Promise<TeamModel[]> {
-	const db = await readDb();
-	let results = db.teams;
+	await ensureDatabaseReady();
+	const conditions: string[] = [];
+	const params: unknown[] = [];
+
 	if (eventId !== undefined) {
-		results = results.filter((t) => t.eventId === eventId);
+		params.push(eventId);
+		conditions.push(`event_id = $${params.length}`);
 	}
+
 	if (classId !== undefined) {
-		results = results.filter((t) => t.classId === classId);
+		params.push(classId);
+		conditions.push(`class_id = $${params.length}`);
 	}
+
 	if (search) {
-		const q = search.toLowerCase();
-		results = results.filter((t) => t.name.toLowerCase().includes(q));
+		params.push(`%${search.toLowerCase().trim()}%`);
+		conditions.push(`LOWER(name) LIKE $${params.length}`);
 	}
-	return results;
+
+	const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+	const res = await pool.query<TeamModel>(
+		`SELECT id, event_id AS "eventId", class_id AS "classId", account_id AS "accountId",
+		        name, image, is_configured AS "isConfigured"
+		 FROM teams
+		 ${whereClause}
+		 ORDER BY id ASC`,
+		params
+	);
+	return res.rows;
 }
 
 export async function getTeamById(id: number): Promise<TeamModel | null> {
-	const db = await readDb();
-	const item = db.teams.find((t) => t.id === id);
-	return item ?? null;
+	await ensureDatabaseReady();
+	const res = await pool.query<TeamModel>(
+		`SELECT id, event_id AS "eventId", class_id AS "classId", account_id AS "accountId",
+		        name, image, is_configured AS "isConfigured"
+		 FROM teams WHERE id = $1`,
+		[id]
+	);
+	return res.rows[0] ?? null;
 }
 
 export async function createTeam(data: CreateTeamDTO): Promise<TeamModel> {
-	const db = await readDb();
-	const trimmedName = data.name.trim();
+	await ensureDatabaseReady();
+	const trimmedName = data.name?.trim();
 	if (!trimmedName) throw new Error("Holdnavn er påkrævet");
 
-	const maxTeamId = db.teams.length > 0 ? Math.max(...db.teams.map((t) => t.id)) : -1;
-	const teamId = maxTeamId + 1;
-	const maxAccId = db.accounts.length > 0 ? Math.max(...db.accounts.map((a) => a.id)) : -1;
-	const accId = maxAccId + 1;
+	const tempUsername = data.username?.trim() || `${slugify(trimmedName)}_${Date.now()}`;
+	const password = data.password?.trim() || generateRandomPassword();
 
-	const baseUsername = data.username?.trim() || `${slugify(trimmedName)}_${teamId}`;
-	const teamAccount: AccountModel = {
-		id: accId,
-		username: baseUsername,
-		password: data.password?.trim() || generateRandomPassword(),
-		type: "TEAM",
-		teamId: teamId,
-	};
-	db.accounts.push(teamAccount);
+	// Create account
+	const accRes = await pool.query<AccountModel>(
+		`INSERT INTO accounts (type, username, password)
+		 VALUES ('TEAM', $1, $2)
+		 RETURNING id`,
+		[tempUsername, password]
+	);
+	const accountId = accRes.rows[0].id;
 
-	const newTeam: TeamModel = {
-		id: teamId,
-		name: trimmedName,
-		classId: data.classId,
-		eventId: data.eventId,
-		accountId: accId,
-		image: data.image,
-		isConfigured: data.isConfigured || false,
-	};
+	// Create team
+	const teamRes = await pool.query<TeamModel>(
+		`INSERT INTO teams (event_id, class_id, account_id, name, image, is_configured)
+		 VALUES ($1, $2, $3, $4, $5, $6)
+		 RETURNING id, event_id AS "eventId", class_id AS "classId", account_id AS "accountId",
+		           name, image, is_configured AS "isConfigured"`,
+		[
+			data.eventId,
+			data.classId,
+			accountId,
+			trimmedName,
+			data.image || null,
+			data.isConfigured || false,
+		]
+	);
+	const team = teamRes.rows[0];
 
-	db.teams.push(newTeam);
-	await writeDb(db);
-	return newTeam;
+	// Update account with final teamId and username if needed
+	const finalUsername = data.username?.trim() || `${slugify(trimmedName)}_${team.id}`;
+	await pool.query(
+		`UPDATE accounts SET username = $1, team_id = $2 WHERE id = $3`,
+		[finalUsername, team.id, accountId]
+	);
+
+	return team;
 }
 
 export async function updateTeam(
 	id: number,
 	data: UpdateTeamDTO
 ): Promise<TeamModel> {
-	const db = await readDb();
-	const index = db.teams.findIndex((t) => t.id === id);
-	if (index === -1) {
+	await ensureDatabaseReady();
+	const existing = await getTeamById(id);
+	if (!existing) {
 		throw new Error(`Hold med id ${id} blev ikke fundet`);
 	}
 
-	const current = db.teams[index];
+	let name = existing.name;
 	if (data.name !== undefined) {
 		const trimmed = data.name.trim();
 		if (!trimmed) throw new Error("Holdnavn må ikke være tomt");
-		current.name = trimmed;
+		name = trimmed;
 	}
-	if (data.classId !== undefined) current.classId = data.classId;
-	if (data.image !== undefined) current.image = data.image;
-	if (data.isConfigured !== undefined) current.isConfigured = data.isConfigured;
 
-	db.teams[index] = current;
-	await writeDb(db);
-	return current;
+	const classId = data.classId !== undefined ? data.classId : existing.classId;
+	const image = data.image !== undefined ? (data.image || null) : (existing.image || null);
+	const isConfigured = data.isConfigured !== undefined ? data.isConfigured : (existing.isConfigured || false);
+
+	const res = await pool.query<TeamModel>(
+		`UPDATE teams
+		 SET name = $1, class_id = $2, image = $3, is_configured = $4
+		 WHERE id = $5
+		 RETURNING id, event_id AS "eventId", class_id AS "classId", account_id AS "accountId",
+		           name, image, is_configured AS "isConfigured"`,
+		[name, classId, image, isConfigured, id]
+	);
+	return res.rows[0];
 }
 
 export async function deleteTeam(id: number): Promise<boolean> {
-	const db = await readDb();
-	const index = db.teams.findIndex((t) => t.id === id);
-	if (index === -1) {
+	await ensureDatabaseReady();
+	const existing = await getTeamById(id);
+	if (!existing) {
 		throw new Error(`Hold med id ${id} blev ikke fundet`);
 	}
-	db.teams.splice(index, 1);
 
-	// Delete team's recorded times and accounts
-	db.stationTimes = db.stationTimes.filter((st) => st.teamId !== id);
-	db.accounts = db.accounts.filter((a) => a.teamId !== id);
+	// Delete team account if exists
+	if (existing.accountId) {
+		await pool.query("DELETE FROM accounts WHERE id = $1", [existing.accountId]);
+	}
 
-	await writeDb(db);
+	await pool.query("DELETE FROM teams WHERE id = $1", [id]);
 	return true;
 }
 
@@ -574,102 +644,128 @@ export async function getStations(
 	eventId?: number,
 	search?: string
 ): Promise<StationModel[]> {
-	const db = await readDb();
-	let results = db.stations;
+	await ensureDatabaseReady();
+	const conditions: string[] = [];
+	const params: unknown[] = [];
+
 	if (eventId !== undefined) {
-		results = results.filter((s) => s.eventId === eventId);
+		params.push(eventId);
+		conditions.push(`event_id = $${params.length}`);
 	}
+
 	if (search) {
-		const q = search.toLowerCase();
-		results = results.filter(
-			(s) =>
-				s.name.toLowerCase().includes(q) ||
-				(s.location && s.location.toLowerCase().includes(q)) ||
-				(s.description && s.description.toLowerCase().includes(q))
+		params.push(`%${search.toLowerCase().trim()}%`);
+		conditions.push(
+			`(LOWER(name) LIKE $${params.length} OR LOWER(COALESCE(location, '')) LIKE $${params.length} OR LOWER(COALESCE(description, '')) LIKE $${params.length})`
 		);
 	}
-	return results;
+
+	const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+	const res = await pool.query<StationModel>(
+		`SELECT id, event_id AS "eventId", account_id AS "accountId", name, location, description
+		 FROM stations
+		 ${whereClause}
+		 ORDER BY id ASC`,
+		params
+	);
+	return res.rows;
 }
 
 export async function getStationById(id: number): Promise<StationModel | null> {
-	const db = await readDb();
-	const item = db.stations.find((s) => s.id === id);
-	return item ?? null;
+	await ensureDatabaseReady();
+	const res = await pool.query<StationModel>(
+		`SELECT id, event_id AS "eventId", account_id AS "accountId", name, location, description
+		 FROM stations WHERE id = $1`,
+		[id]
+	);
+	return res.rows[0] ?? null;
 }
 
 export async function createStation(data: CreateStationDTO): Promise<StationModel> {
-	const db = await readDb();
-	const trimmedName = data.name.trim();
+	await ensureDatabaseReady();
+	const trimmedName = data.name?.trim();
 	if (!trimmedName) throw new Error("Stationsnavn er påkrævet");
 
-	const maxStationId = db.stations.length > 0 ? Math.max(...db.stations.map((s) => s.id)) : -1;
-	const stationId = maxStationId + 1;
-	const maxAccId = db.accounts.length > 0 ? Math.max(...db.accounts.map((a) => a.id)) : -1;
-	const accId = maxAccId + 1;
+	const tempUsername = data.username?.trim() || `post_${slugify(trimmedName)}_${Date.now()}`;
+	const password = data.password?.trim() || generateRandomPassword();
 
-	const baseUsername = data.username?.trim() || `post_${slugify(trimmedName)}_${stationId}`;
-	const stationAccount: AccountModel = {
-		id: accId,
-		username: baseUsername,
-		password: data.password?.trim() || generateRandomPassword(),
-		type: "POST_GUARD",
-		stationId: stationId,
-	};
-	db.accounts.push(stationAccount);
+	// Create post guard account
+	const accRes = await pool.query<AccountModel>(
+		`INSERT INTO accounts (type, username, password)
+		 VALUES ('POST_GUARD', $1, $2)
+		 RETURNING id`,
+		[tempUsername, password]
+	);
+	const accountId = accRes.rows[0].id;
 
-	const newStation: StationModel = {
-		id: stationId,
-		name: trimmedName,
-		eventId: data.eventId,
-		accountId: accId,
-		location: data.location?.trim() || undefined,
-		description: data.description?.trim() || undefined,
-	};
+	// Create station
+	const stRes = await pool.query<StationModel>(
+		`INSERT INTO stations (event_id, account_id, name, location, description)
+		 VALUES ($1, $2, $3, $4, $5)
+		 RETURNING id, event_id AS "eventId", account_id AS "accountId", name, location, description`,
+		[
+			data.eventId,
+			accountId,
+			trimmedName,
+			data.location?.trim() || null,
+			data.description?.trim() || null,
+		]
+	);
+	const station = stRes.rows[0];
 
-	db.stations.push(newStation);
-	await writeDb(db);
-	return newStation;
+	// Update account with final stationId and username
+	const finalUsername = data.username?.trim() || `post_${slugify(trimmedName)}_${station.id}`;
+	await pool.query(
+		`UPDATE accounts SET username = $1, station_id = $2 WHERE id = $3`,
+		[finalUsername, station.id, accountId]
+	);
+
+	return station;
 }
 
 export async function updateStation(
 	id: number,
 	data: UpdateStationDTO
 ): Promise<StationModel> {
-	const db = await readDb();
-	const index = db.stations.findIndex((s) => s.id === id);
-	if (index === -1) {
+	await ensureDatabaseReady();
+	const existing = await getStationById(id);
+	if (!existing) {
 		throw new Error(`Station med id ${id} blev ikke fundet`);
 	}
 
-	const current = db.stations[index];
+	let name = existing.name;
 	if (data.name !== undefined) {
 		const trimmed = data.name.trim();
 		if (!trimmed) throw new Error("Stationsnavn må ikke være tomt");
-		current.name = trimmed;
-	}
-	if (data.location !== undefined) current.location = data.location.trim() || undefined;
-	if (data.description !== undefined) {
-		current.description = data.description.trim() || undefined;
+		name = trimmed;
 	}
 
-	db.stations[index] = current;
-	await writeDb(db);
-	return current;
+	const location = data.location !== undefined ? data.location.trim() || null : (existing.location || null);
+	const description = data.description !== undefined ? data.description.trim() || null : (existing.description || null);
+
+	const res = await pool.query<StationModel>(
+		`UPDATE stations
+		 SET name = $1, location = $2, description = $3
+		 WHERE id = $4
+		 RETURNING id, event_id AS "eventId", account_id AS "accountId", name, location, description`,
+		[name, location, description, id]
+	);
+	return res.rows[0];
 }
 
 export async function deleteStation(id: number): Promise<boolean> {
-	const db = await readDb();
-	const index = db.stations.findIndex((s) => s.id === id);
-	if (index === -1) {
+	await ensureDatabaseReady();
+	const existing = await getStationById(id);
+	if (!existing) {
 		throw new Error(`Station med id ${id} blev ikke fundet`);
 	}
-	db.stations.splice(index, 1);
 
-	// Delete station times and station guard accounts
-	db.stationTimes = db.stationTimes.filter((st) => st.stationId !== id);
-	db.accounts = db.accounts.filter((a) => a.stationId !== id);
+	// Delete station account if exists
+	if (existing.accountId) {
+		await pool.query("DELETE FROM accounts WHERE id = $1", [existing.accountId]);
+	}
 
-	await writeDb(db);
+	await pool.query("DELETE FROM stations WHERE id = $1", [id]);
 	return true;
 }
 
@@ -679,80 +775,102 @@ export async function getStationTimes(filter?: {
 	stationId?: number;
 	teamId?: number;
 }): Promise<StationTimeModel[]> {
-	const db = await readDb();
-	let results = db.stationTimes;
+	await ensureDatabaseReady();
+	const conditions: string[] = [];
+	const params: unknown[] = [];
+
 	if (filter?.eventId !== undefined) {
-		results = results.filter((st) => st.eventId === filter.eventId);
+		params.push(filter.eventId);
+		conditions.push(`event_id = $${params.length}`);
 	}
 	if (filter?.stationId !== undefined) {
-		results = results.filter((st) => st.stationId === filter.stationId);
+		params.push(filter.stationId);
+		conditions.push(`station_id = $${params.length}`);
 	}
 	if (filter?.teamId !== undefined) {
-		results = results.filter((st) => st.teamId === filter.teamId);
+		params.push(filter.teamId);
+		conditions.push(`team_id = $${params.length}`);
 	}
-	return results;
+
+	const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+	const res = await pool.query<StationTimeModel>(
+		`SELECT id, event_id AS "eventId", station_id AS "stationId", team_id AS "teamId",
+		        time_seconds AS "timeSeconds", points, completed_at AS "completedAt"
+		 FROM station_times
+		 ${whereClause}
+		 ORDER BY id ASC`,
+		params
+	);
+	return res.rows;
 }
 
 export async function getStationTimeById(
 	id: number
 ): Promise<StationTimeModel | null> {
-	const db = await readDb();
-	const item = db.stationTimes.find((st) => st.id === id);
-	return item ?? null;
+	await ensureDatabaseReady();
+	const res = await pool.query<StationTimeModel>(
+		`SELECT id, event_id AS "eventId", station_id AS "stationId", team_id AS "teamId",
+		        time_seconds AS "timeSeconds", points, completed_at AS "completedAt"
+		 FROM station_times WHERE id = $1`,
+		[id]
+	);
+	return res.rows[0] ?? null;
 }
 
 export async function createStationTime(
 	data: CreateStationTimeDTO
 ): Promise<StationTimeModel> {
-	const db = await readDb();
-	const maxId =
-		db.stationTimes.length > 0
-			? Math.max(...db.stationTimes.map((st) => st.id))
-			: -1;
-
-	const newRecord: StationTimeModel = {
-		id: maxId + 1,
-		stationId: data.stationId,
-		teamId: data.teamId,
-		eventId: data.eventId,
-		timeSeconds: data.timeSeconds,
-		points: data.points,
-		completedAt: data.completedAt || new Date().toISOString(),
-	};
-
-	db.stationTimes.push(newRecord);
-	await writeDb(db);
-	return newRecord;
+	await ensureDatabaseReady();
+	const completedAt = data.completedAt || new Date().toISOString();
+	const res = await pool.query<StationTimeModel>(
+		`INSERT INTO station_times (event_id, station_id, team_id, time_seconds, points, completed_at)
+		 VALUES ($1, $2, $3, $4, $5, $6)
+		 RETURNING id, event_id AS "eventId", station_id AS "stationId", team_id AS "teamId",
+		           time_seconds AS "timeSeconds", points, completed_at AS "completedAt"`,
+		[
+			data.eventId,
+			data.stationId,
+			data.teamId,
+			data.timeSeconds,
+			data.points ?? null,
+			completedAt,
+		]
+	);
+	return res.rows[0];
 }
 
 export async function updateStationTime(
 	id: number,
 	data: UpdateStationTimeDTO
 ): Promise<StationTimeModel> {
-	const db = await readDb();
-	const index = db.stationTimes.findIndex((st) => st.id === id);
-	if (index === -1) {
+	await ensureDatabaseReady();
+	const existing = await getStationTimeById(id);
+	if (!existing) {
 		throw new Error(`Tidsregistrering med id ${id} blev ikke fundet`);
 	}
 
-	const current = db.stationTimes[index];
-	if (data.teamId !== undefined) current.teamId = data.teamId;
-	if (data.timeSeconds !== undefined) current.timeSeconds = data.timeSeconds;
-	if (data.points !== undefined) current.points = data.points;
-	if (data.completedAt !== undefined) current.completedAt = data.completedAt;
+	const teamId = data.teamId !== undefined ? data.teamId : existing.teamId;
+	const timeSeconds = data.timeSeconds !== undefined ? data.timeSeconds : existing.timeSeconds;
+	const points = data.points !== undefined ? (data.points ?? null) : (existing.points ?? null);
+	const completedAt = data.completedAt !== undefined ? data.completedAt : existing.completedAt;
 
-	db.stationTimes[index] = current;
-	await writeDb(db);
-	return current;
+	const res = await pool.query<StationTimeModel>(
+		`UPDATE station_times
+		 SET team_id = $1, time_seconds = $2, points = $3, completed_at = $4
+		 WHERE id = $5
+		 RETURNING id, event_id AS "eventId", station_id AS "stationId", team_id AS "teamId",
+		           time_seconds AS "timeSeconds", points, completed_at AS "completedAt"`,
+		[teamId, timeSeconds, points, completedAt, id]
+	);
+	return res.rows[0];
 }
 
 export async function deleteStationTime(id: number): Promise<boolean> {
-	const db = await readDb();
-	const index = db.stationTimes.findIndex((st) => st.id === id);
-	if (index === -1) {
+	await ensureDatabaseReady();
+	const existing = await getStationTimeById(id);
+	if (!existing) {
 		throw new Error(`Tidsregistrering med id ${id} blev ikke fundet`);
 	}
-	db.stationTimes.splice(index, 1);
-	await writeDb(db);
+	await pool.query("DELETE FROM station_times WHERE id = $1", [id]);
 	return true;
 }
