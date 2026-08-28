@@ -50,6 +50,7 @@ const normalizeTime = (value: string) => {
 	return `${String(minuteValue).padStart(2, "0")}:${String(secondValue).padStart(2, "0")}`;
 };
 
+// Hjælpefunktion til konvertering mellem MM:SS og sekunder
 const timeToSeconds = (timeStr: string): number => {
 	const [min, sec] = timeStr.split(":").map(Number);
 	return (min || 0) * 60 + (sec || 0);
@@ -196,6 +197,7 @@ export default function StationPage() {
 		}));
 	};
 
+	// 3. POST: Gem tid til API (/results)
 	const saveTime = async (id: number) => {
 		const draft = normalizeTime(draftTimes[id] ?? "");
 		if (!draft || !currentStation || !currentEvent) return;
@@ -229,6 +231,7 @@ export default function StationPage() {
 		}
 	};
 
+	// 4. DELETE: Fjern tid via API (/results/{id})
 	const deleteTime = async (id: number) => {
 		const targetTime = currentStationTimes.find((st) => st.teamId === id);
 		if (targetTime) {
