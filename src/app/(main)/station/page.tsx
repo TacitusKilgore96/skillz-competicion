@@ -1,7 +1,7 @@
 "use client";
 
+import { time } from "console";
 import { useState, useEffect } from "react";
-import team from "../team/page";
 
 const API_BASE_URL = "https://skills.coolify.pandasystems.dev/api.php";
 
@@ -13,6 +13,7 @@ type Team = {
   seconds: string;
   team_id: number;
   station_id: number;
+  station_number: number;
 };
 
 type Class = {
@@ -21,16 +22,6 @@ type Class = {
   teacher_name: string;
 };
 
-type School = {
-  school_id: string;
-  name: string;
-};
-
-type Station = {
-  id: string;
-  number: string;
-  name: string;
-};
 
 const normalizeTime = (value: string) => {
   const trimmed = value.trim();
@@ -84,6 +75,7 @@ export default function StationPage() {
   const [classData, setClassData] = useState<Class | null>(null);
   const [classId, setClassId] = useState<number>(1);
   const [timeData, setTimeData] = useState<Team[]>([]);
+  const [schoolId, setSchoolId] = useState<number>(1);
 
   // 1. GET: Hent hold og eksisterende resultater fra API
   useEffect(() => {
@@ -157,7 +149,7 @@ export default function StationPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           team_id: id,
-          station_id: 15, // Station/post id
+          station_id: 15, // Station/post nr
           seconds: seconds,
         }),
       });
@@ -288,7 +280,7 @@ export default function StationPage() {
                     <div className="p-6 text-center text-secondary">Henter data...</div>
                   ) : (
                     teamTimes
-                    .filter(team=> team.station_id=15)
+                    .filter(time=> time.station_id=15)
                     .map((team) => (
                       <div
                         key={team.id}
@@ -406,7 +398,7 @@ export default function StationPage() {
 
   function TimeLog() {
     if (timeData.length > 0)
-      console.log("timeData", timeData[0].seconds);
+      console.log("timeData", timeData);
   }
 }
 
