@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
 	getEvents,
 	getStations,
@@ -16,6 +16,17 @@ import { StationModel, StationTimeModel } from "@/models/StationModel";
 import { ClassModel } from "@/models/ClassModel";
 import { TeamModel } from "@/models/TeamModel";
 import { EventModel } from "@/models/EventModel";
+import {
+	IconUsers,
+	IconSearch,
+	IconCheck,
+	IconClock,
+	IconMenu2,
+	IconX,
+	IconChevronRight,
+	IconTrophy,
+	IconFilter,
+} from "@tabler/icons-react";
 
 const normalizeTime = (value: string) => {
 	const trimmed = value.trim();
@@ -50,7 +61,7 @@ const normalizeTime = (value: string) => {
 	return `${String(minuteValue).padStart(2, "0")}:${String(secondValue).padStart(2, "0")}`;
 };
 
-// Hjælpefunktion til konvertering mellem MM:SS og sekunder
+// Konvertering mellem MM:SS og sekunder
 const timeToSeconds = (timeStr: string): number => {
 	const [min, sec] = timeStr.split(":").map(Number);
 	return (min || 0) * 60 + (sec || 0);
@@ -76,6 +87,12 @@ export default function StationPage() {
 
 	const [classIndex, setClassIndex] = useState<number>(0);
 	const [draftTimes, setDraftTimes] = useState<Record<number, string>>({});
+	const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
+	const [teamSearch, setTeamSearch] = useState<string>("");
+	const [sidebarClassFilter, setSidebarClassFilter] = useState<string>("ALL");
+	const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
+
+	const inputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
 	// 1. Auth Guard
 	useEffect(() => {
@@ -156,17 +173,63 @@ export default function StationPage() {
 		return eventClasses[safeIndex >= 0 ? safeIndex : 0] || null;
 	}, [eventClasses, classIndex]);
 
-	const classTeams = useMemo(() => {
-		if (!selectedClass) return [];
-		return teams.filter((t) => t.classId === selectedClass.id);
-	}, [teams, selectedClass]);
-
 	const currentStationTimes = useMemo(() => {
 		if (!currentStation) return [];
 		return stationTimes.filter((st) => st.stationId === currentStation.id);
 	}, [stationTimes, currentStation]);
 
-	// Format teams for display
+	// All teams in current event with extra meta (class, school, time)
+	const allEventTeamsWithStatus = useMemo(() => {
+		if (!currentEvent) return [];
+		const classMap = new Map(eventClasses.map((c) => [c.id, c]));
+
+		return teams
+			.filter((t) => t.eventId === currentEvent.id)
+			.map((t) => {
+				const cls = classMap.get(t.classId);
+				const timeRec = currentStationTimes.find((st) => st.teamId === t.id);
+				return {
+					...t,
+					className: cls?.name || "Ukendt klasse",
+					schoolName: cls?.school || "",
+					time: timeRec ? secondsToTime(timeRec.timeSeconds) : "",
+					timeSeconds: timeRec?.timeSeconds ?? null,
+					resultId: timeRec?.id,
+					isCompleted: Boolean(timeRec),
+				};
+			});
+	}, [teams, currentEvent, eventClasses, currentStationTimes]);
+
+	// Filtered sidebar teams based on search & class filter
+	const sidebarTeams = useMemo(() => {
+		let list = allEventTeamsWithStatus;
+
+		if (sidebarClassFilter !== "ALL") {
+			const classIdNum = Number(sidebarClassFilter);
+			list = list.filter((t) => t.classId === classIdNum);
+		}
+
+		if (teamSearch.trim()) {
+			const q = teamSearch.toLowerCase().trim();
+			list = list.filter(
+				(t) =>
+					t.name.toLowerCase().includes(q) ||
+					t.className.toLowerCase().includes(q) ||
+					t.schoolName.toLowerCase().includes(q) ||
+					String(t.id).includes(q)
+			);
+		}
+
+		return list;
+	}, [allEventTeamsWithStatus, sidebarClassFilter, teamSearch]);
+
+	// Teams in active class for main area
+	const classTeams = useMemo(() => {
+		if (!selectedClass) return [];
+		return teams.filter((t) => t.classId === selectedClass.id);
+	}, [teams, selectedClass]);
+
+	// Format teams for display in main section
 	const teamTimes = useMemo(() => {
 		return classTeams.map((t) => {
 			const timeRec = currentStationTimes.find((st) => st.teamId === t.id);
@@ -197,7 +260,7 @@ export default function StationPage() {
 		}));
 	};
 
-	// 3. POST: Gem tid til API (/results)
+	// 3. POST: Gem tid til API
 	const saveTime = async (id: number) => {
 		const draft = normalizeTime(draftTimes[id] ?? "");
 		if (!draft || !currentStation || !currentEvent) return;
@@ -231,7 +294,7 @@ export default function StationPage() {
 		}
 	};
 
-	// 4. DELETE: Fjern tid via API (/results/{id})
+	// 4. DELETE: Fjern tid
 	const deleteTime = async (id: number) => {
 		const targetTime = currentStationTimes.find((st) => st.teamId === id);
 		if (targetTime) {
@@ -249,6 +312,34 @@ export default function StationPage() {
 		}));
 	};
 
+	// Switch active team from sidebar
+	const handleSelectTeam = (team: typeof allEventTeamsWithStatus[0]) => {
+		setSelectedTeamId(team.id);
+
+		// If team is in a different class, switch classIndex to match that class
+		const targetClassIndex = eventClasses.findIndex((c) => c.id === team.classId);
+		if (targetClassIndex !== -1 && targetClassIndex !== classIndex) {
+			setClassIndex(targetClassIndex);
+		}
+
+		// Scroll to team card in main view
+		setTimeout(() => {
+			const el = document.getElementById(`team-card-${team.id}`);
+			if (el) {
+				el.scrollIntoView({ behavior: "smooth", block: "center" });
+			}
+			const inputEl = inputRefs.current[team.id];
+			if (inputEl) {
+				inputEl.focus();
+			}
+		}, 100);
+
+		// Close mobile drawer if on mobile screen
+		if (window.innerWidth < 768) {
+			setSidebarOpen(false);
+		}
+	};
+
 	if (authChecking) {
 		return null;
 	}
@@ -256,13 +347,193 @@ export default function StationPage() {
 	return (
 		<div className="min-h-screen bg-background text-primary">
 			<div className="flex min-h-screen">
+				{/* MOBILE SIDEBAR OVERLAY */}
+				{sidebarOpen && (
+					<div
+						className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs md:hidden"
+						onClick={() => setSidebarOpen(false)}
+					/>
+				)}
+
 				{/* SIDEBAR */}
-				<aside className="hidden w-62.5 shrink-0 border-r border-border bg-background-secondary p-4 md:flex md:flex-col">
-					<div className="mb-8 flex items-center gap-3 px-3 py-3">
-						<div>
-							<div className="font-bold tracking-wide uppercase">
-								{selectedClass?.school || currentEvent?.title || "SKILLS"}
+				<aside
+					className={`fixed inset-y-0 left-0 z-50 flex w-76 shrink-0 flex-col border-r border-border bg-box-background transition-transform duration-300 md:static md:w-80 md:translate-x-0 ${
+						sidebarOpen ? "translate-x-0" : "-translate-x-full"
+					}`}
+				>
+					{/* SIDEBAR HEADER */}
+					<div className="flex items-center justify-between border-b border-border p-4">
+						<div className="flex items-center gap-3">
+							<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-blue-background text-accent-blue">
+								<IconUsers size={20} />
 							</div>
+							<div>
+								<div className="text-xs font-bold tracking-wider text-secondary uppercase">
+									Holdoversigt
+								</div>
+								<div className="text-sm font-bold text-primary truncate max-w-44">
+									{currentStation?.name || "Værksted"}
+								</div>
+							</div>
+						</div>
+
+						<button
+							type="button"
+							onClick={() => setSidebarOpen(false)}
+							className="rounded-lg p-1.5 text-secondary hover:bg-background-secondary hover:text-primary md:hidden"
+						>
+							<IconX size={20} />
+						</button>
+					</div>
+
+					{/* SIDEBAR FILTERS & SEARCH */}
+					<div className="space-y-2.5 border-b border-border p-3.5 bg-background/50">
+						{/* Search Input */}
+						<div className="relative">
+							<IconSearch
+								size={16}
+								className="absolute top-1/2 left-3 -translate-y-1/2 text-secondary pointer-events-none"
+							/>
+							<input
+								type="text"
+								placeholder="Søg hold, klasse, id..."
+								value={teamSearch}
+								onChange={(e) => setTeamSearch(e.target.value)}
+								className="w-full rounded-xl border border-border bg-background py-2 pr-3 pl-9 text-xs text-primary placeholder:text-secondary focus:border-accent-blue focus:outline-none"
+							/>
+							{teamSearch && (
+								<button
+									onClick={() => setTeamSearch("")}
+									className="absolute top-1/2 right-2.5 -translate-y-1/2 text-secondary hover:text-primary"
+								>
+									<IconX size={14} />
+								</button>
+							)}
+						</div>
+
+						{/* Class Filter Dropdown */}
+						{eventClasses.length > 1 && (
+							<div className="relative">
+								<select
+									value={sidebarClassFilter}
+									onChange={(e) => setSidebarClassFilter(e.target.value)}
+									className="w-full appearance-none rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium text-primary focus:border-accent-blue focus:outline-none cursor-pointer"
+								>
+									<option value="ALL">Alle klasser ({allEventTeamsWithStatus.length} hold)</option>
+									{eventClasses.map((c) => {
+										const count = allEventTeamsWithStatus.filter((t) => t.classId === c.id).length;
+										return (
+											<option key={c.id} value={c.id}>
+												{c.name} - {c.school} ({count} hold)
+											</option>
+										);
+									})}
+								</select>
+								<div className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-secondary">
+									<IconFilter size={14} />
+								</div>
+							</div>
+						)}
+					</div>
+
+					{/* SIDEBAR TEAM LIST */}
+					<div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+						{loading ? (
+							<div className="p-6 text-center text-xs text-secondary">Henter hold...</div>
+						) : sidebarTeams.length === 0 ? (
+							<div className="p-6 text-center text-xs text-secondary">
+								Ingen hold matcher søgningen
+							</div>
+						) : (
+							sidebarTeams.map((team) => {
+								const isSelected = selectedTeamId === team.id;
+								return (
+									<button
+										key={team.id}
+										type="button"
+										onClick={() => handleSelectTeam(team)}
+										className={`group flex w-full items-center justify-between gap-2.5 rounded-xl border p-2.5 text-left transition ${
+											isSelected
+												? "border-accent-blue bg-accent-blue-background/70 shadow-sm"
+												: "border-transparent bg-background-secondary/60 hover:border-border hover:bg-background-secondary"
+										}`}
+									>
+										<div className="flex items-center gap-2.5 min-w-0">
+											<div
+												className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
+													isSelected
+														? "bg-accent-blue text-white"
+														: team.isCompleted
+														? "bg-success-background text-success border border-green-dark"
+														: "bg-id-nr-background text-id-nr"
+												}`}
+											>
+												{team.isCompleted ? <IconCheck size={14} /> : team.id}
+											</div>
+
+											<div className="min-w-0">
+												<div
+													className={`truncate text-xs font-semibold ${
+														isSelected ? "text-primary font-bold" : "text-primary"
+													}`}
+												>
+													{team.name}
+												</div>
+												<div className="truncate text-[11px] text-secondary">
+													{team.className}
+													{team.schoolName ? ` • ${team.schoolName}` : ""}
+												</div>
+											</div>
+										</div>
+
+										<div className="flex items-center gap-1 shrink-0">
+											{team.isCompleted ? (
+												<span className="rounded-md border border-green-dark/60 bg-success-background px-2 py-0.5 font-mono text-[11px] font-bold text-success">
+													{team.time}
+												</span>
+											) : (
+												<span className="rounded-md border border-border bg-background/80 px-2 py-0.5 font-mono text-[11px] text-secondary">
+													--:--
+												</span>
+											)}
+											<IconChevronRight
+												size={14}
+												className={`transition ${
+													isSelected
+														? "text-accent-blue translate-x-0.5"
+														: "text-secondary/40 group-hover:text-secondary group-hover:translate-x-0.5"
+												}`}
+											/>
+										</div>
+									</button>
+								);
+							})
+						)}
+					</div>
+
+					{/* SIDEBAR FOOTER STATS */}
+					<div className="border-t border-border p-3.5 bg-background/40">
+						<div className="flex items-center justify-between text-xs text-secondary">
+							<span>Status for station:</span>
+							<span className="font-semibold text-primary">
+								{allEventTeamsWithStatus.filter((t) => t.isCompleted).length} / {allEventTeamsWithStatus.length} hold
+							</span>
+						</div>
+						<div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-border">
+							<div
+								className="h-full bg-success transition-all duration-300"
+								style={{
+									width: `${
+										allEventTeamsWithStatus.length > 0
+											? Math.round(
+													(allEventTeamsWithStatus.filter((t) => t.isCompleted).length /
+														allEventTeamsWithStatus.length) *
+														100
+											  )
+											: 0
+									}%`,
+								}}
+							/>
 						</div>
 					</div>
 				</aside>
@@ -272,6 +543,16 @@ export default function StationPage() {
 					{/* TOPBAR */}
 					<header className="flex h-18.5 items-center justify-between border-b border-border bg-box-background/80 px-5 md:px-9">
 						<div className="flex items-center gap-3">
+							{/* Mobile Sidebar Toggle Button */}
+							<button
+								type="button"
+								onClick={() => setSidebarOpen(true)}
+								className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-background-secondary text-primary transition hover:border-accent-blue md:hidden"
+								title="Åbn holdliste"
+							>
+								<IconMenu2 size={20} />
+							</button>
+
 							<div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-light font-bold text-green-dark">
 								{user?.username ? user.username.charAt(0).toUpperCase() : "P"}
 							</div>
@@ -323,7 +604,7 @@ export default function StationPage() {
 							<StatCard
 								title="Hold"
 								value={`${completed.length} / ${teamTimes.length}`}
-								description="Tider registreret"
+								description="Tider registreret i klassen"
 							/>
 						</div>
 
@@ -338,8 +619,8 @@ export default function StationPage() {
 											Registrer den tid hvert hold bruger på værkstedet
 										</p>
 									</div>
-									<div className="rounded-lg bg-accent-blue-background px-3 py-2 text-xs font-bold uppercase">
-										{currentStation?.name || "POST"}
+									<div className="rounded-lg bg-accent-blue-background px-3 py-2 text-xs font-bold uppercase text-accent-blue">
+										{selectedClass?.name || currentStation?.name || "POST"}
 									</div>
 								</div>
 
@@ -351,69 +632,98 @@ export default function StationPage() {
 											Ingen hold fundet i denne klasse.
 										</div>
 									) : (
-										teamTimes.map((team) => (
-											<div
-												key={team.id}
-												className="flex flex-col gap-4 px-6 py-5 transition hover:bg-primary/60 sm:flex-row sm:items-center sm:justify-between"
-											>
-												{/* TEAM */}
-												<div className="flex items-center gap-4">
-													<div className="flex h-11 w-11 items-center justify-center rounded-xl bg-id-nr-background text-sm font-bold text-id-nr">
-														{team.id}
-													</div>
-													<div>
-														<div className="font-semibold">{team.name}</div>
-														<div className="mt-1 text-xs text-secondary">
-															{team.time ? "Tid registreret" : "Ingen tid registreret"}
+										teamTimes.map((team) => {
+											const isSelected = selectedTeamId === team.id;
+											return (
+												<div
+													key={team.id}
+													id={`team-card-${team.id}`}
+													className={`flex flex-col gap-4 px-6 py-5 transition sm:flex-row sm:items-center sm:justify-between ${
+														isSelected
+															? "bg-accent-blue-background/30 ring-2 ring-accent-blue/60"
+															: "hover:bg-primary/5"
+													}`}
+												>
+													{/* TEAM */}
+													<div className="flex items-center gap-4">
+														<div
+															className={`flex h-11 w-11 items-center justify-center rounded-xl text-sm font-bold ${
+																isSelected
+																	? "bg-accent-blue text-white shadow-sm"
+																	: "bg-id-nr-background text-id-nr"
+															}`}
+														>
+															{team.id}
 														</div>
-													</div>
-												</div>
-
-												{/* TIME */}
-												<div className="flex items-center gap-3">
-													{team.time ? (
-														<>
-															<div
-																className="rounded-xl border border-green-dark bg-success-background px-5 py-3 font-mono text-lg font-bold text-success cursor-pointer"
-																onClick={() => updateTime(team.id, team.time)}
-															>
-																{team.time}
+														<div>
+															<div className="flex items-center gap-2">
+																<div className="font-semibold">{team.name}</div>
+																{isSelected && (
+																	<span className="rounded-md bg-accent-blue-background px-2 py-0.5 text-[10px] font-bold text-accent-blue uppercase tracking-wide">
+																		Valgt hold
+																	</span>
+																)}
 															</div>
-
-															<button
-																onClick={() => deleteTime(team.id)}
-																className="flex h-10 w-10 items-center justify-center rounded-lg bg-danger-background text-danger transition hover:bg-danger hover:text-primary"
-																title="Slet tid"
-															>
-																×
-															</button>
-														</>
-													) : (
-														<div className="flex items-center gap-2">
-															<input
-																type="text"
-																placeholder="MM:SS"
-																value={draftTimes[team.id] ?? ""}
-																maxLength={5}
-																onChange={(e) => updateTime(team.id, e.target.value)}
-																onKeyDown={(e) => {
-																	if (e.key === "Enter") saveTime(team.id);
-																}}
-																className="w-28 rounded-xl border border-border bg-background px-4 py-3 text-center font-mono text-lg text-primary outline-none transition placeholder:text-[#525977] focus:border-green"
-															/>
-
-															<button
-																type="button"
-																onClick={() => saveTime(team.id)}
-																className="rounded-xl bg-green-light px-4 py-3 font-semibold text-green-dark transition hover:bg-hover-bg"
-															>
-																Gem
-															</button>
+															<div className="mt-1 text-xs text-secondary">
+																{team.time ? "Tid registreret" : "Ingen tid registreret"}
+															</div>
 														</div>
-													)}
+													</div>
+
+													{/* TIME */}
+													<div className="flex items-center gap-3">
+														{team.time ? (
+															<>
+																<div
+																	className="rounded-xl border border-green-dark bg-success-background px-5 py-3 font-mono text-lg font-bold text-success cursor-pointer transition hover:scale-102"
+																	onClick={() => updateTime(team.id, team.time)}
+																	title="Klik for at redigere"
+																>
+																	{team.time}
+																</div>
+
+																<button
+																	onClick={() => deleteTime(team.id)}
+																	className="flex h-10 w-10 items-center justify-center rounded-lg bg-danger-background text-danger transition hover:bg-danger hover:text-primary cursor-pointer"
+																	title="Slet tid"
+																>
+																	×
+																</button>
+															</>
+														) : (
+															<div className="flex items-center gap-2">
+																<input
+																	ref={(el) => {
+																		inputRefs.current[team.id] = el;
+																	}}
+																	type="text"
+																	placeholder="MM:SS"
+																	value={draftTimes[team.id] ?? ""}
+																	maxLength={5}
+																	onChange={(e) => updateTime(team.id, e.target.value)}
+																	onKeyDown={(e) => {
+																		if (e.key === "Enter") saveTime(team.id);
+																	}}
+																	className={`w-28 rounded-xl border bg-background px-4 py-3 text-center font-mono text-lg text-primary outline-none transition placeholder:text-secondary/50 ${
+																		isSelected
+																			? "border-accent-blue ring-2 ring-accent-blue/30 focus:border-accent-blue"
+																			: "border-border focus:border-green"
+																	}`}
+																/>
+
+																<button
+																	type="button"
+																	onClick={() => saveTime(team.id)}
+																	className="rounded-xl bg-green-light px-4 py-3 font-semibold text-green-dark transition hover:bg-hover-bg cursor-pointer"
+																>
+																	Gem
+																</button>
+															</div>
+														)}
+													</div>
 												</div>
-											</div>
-										))
+											);
+										})
 									)}
 								</div>
 							</section>
@@ -424,14 +734,14 @@ export default function StationPage() {
 									<div className="mb-5 flex items-center justify-between">
 										<div>
 											<div className="text-xs font-semibold uppercase tracking-wider text-secondary">
-												Klassens Bedste hold resultat
+												Klassens Bedste resultat
 											</div>
 											<div className="mt-1 text-lg font-bold">
 												{currentStation?.name || "Post"}
 											</div>
 										</div>
-										<div className="flex h-11 w-11 items-center justify-center rounded-xl bg-warning-background text-xl">
-											🏆
+										<div className="flex h-11 w-11 items-center justify-center rounded-xl bg-warning-background text-warning text-xl">
+											<IconTrophy size={22} />
 										</div>
 									</div>
 									<div className="text-4xl font-black text-warning">
@@ -458,16 +768,22 @@ export default function StationPage() {
 						{eventClasses.length > 1 && (
 							<div className="mt-6 flex flex-col justify-between gap-3 sm:flex-row">
 								<button
-									className="rounded-xl border border-border bg-box-background px-5 py-3 text-sm font-semibold text-secondary transition hover:border-green hover:text-primary disabled:opacity-40"
+									className="rounded-xl border border-border bg-box-background px-5 py-3 text-sm font-semibold text-secondary transition hover:border-green hover:text-primary disabled:opacity-40 cursor-pointer"
 									disabled={classIndex <= 0}
-									onClick={() => setClassIndex((i) => Math.max(0, i - 1))}
+									onClick={() => {
+										setClassIndex((i) => Math.max(0, i - 1));
+										setSelectedTeamId(null);
+									}}
 								>
 									← Forrige klasse
 								</button>
 								<button
-									className="rounded-xl border border-border bg-box-background px-5 py-3 text-sm font-semibold text-secondary transition hover:border-green hover:text-primary disabled:opacity-40"
+									className="rounded-xl border border-border bg-box-background px-5 py-3 text-sm font-semibold text-secondary transition hover:border-green hover:text-primary disabled:opacity-40 cursor-pointer"
 									disabled={classIndex >= eventClasses.length - 1}
-									onClick={() => setClassIndex((i) => Math.min(eventClasses.length - 1, i + 1))}
+									onClick={() => {
+										setClassIndex((i) => Math.min(eventClasses.length - 1, i + 1));
+										setSelectedTeamId(null);
+									}}
 								>
 									Næste klasse →
 								</button>
