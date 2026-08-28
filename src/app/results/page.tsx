@@ -66,11 +66,13 @@ export default function ResultsPage() {
            🏆 Dagens Vindere 🏆
           </h1>
         <div className="flex items-center justify-center gap-6 mb-15 not-only:">
-          <ResultTable
-            results={results.slice(0, 3)}
-            showAverage={false}
-            rowStyles={topThreeStyles}
-          />
+          <section className="overflow-hidden rounded-2xl border border-border bg-box-background">
+            <ResultTable
+              results={results.slice(0, 3)}
+              showAverage={false}
+              rowStyles={topThreeStyles}
+            />
+          </section>
           <img src="/images/victoryroyale.gif" alt="" className="w-70" />
         </div>
           <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">
